@@ -5,6 +5,7 @@ const config: Config = {
   testEnvironment: 'node',
   testMatch: ['**/tests/**/*.test.ts'],
   clearMocks: true,
+  setupFiles: ['dotenv/config'],
 }
 
 export default config
