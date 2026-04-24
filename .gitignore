@@ -1,1 +1,17 @@
 .superpowers/
+
+# Environment files — never commit real secrets
+.env
+.env.local
+.env.*.local
+api/.env
+web/.env.local
+
+# Dependencies
+node_modules/
+api/node_modules/
+web/node_modules/
+
+# Build output
+api/dist/
+web/.next/
