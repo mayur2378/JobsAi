@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function AppLayout({
@@ -42,11 +43,11 @@ export default async function AppLayout({
           JobTrack AI
         </div>
         <nav className="flex-1 px-2 space-y-0.5 text-sm text-slate-500">
-          <a href="/dashboard" className="block px-3 py-2 rounded-lg hover:text-slate-300 transition">Dashboard</a>
-          <a href="/jobs" className="block px-3 py-2 rounded-lg hover:text-slate-300 transition">Jobs</a>
-          <a href="/tracker" className="block px-3 py-2 rounded-lg hover:text-slate-300 transition">Tracker</a>
-          <a href="/analytics" className="block px-3 py-2 rounded-lg hover:text-slate-300 transition">Analytics</a>
-          <a href="/profile" className="block px-3 py-2 rounded-lg hover:text-slate-300 transition">Profile</a>
+          <Link href="/dashboard" className="block px-3 py-2 rounded-lg hover:text-slate-300 transition">Dashboard</Link>
+          <Link href="/jobs" className="block px-3 py-2 rounded-lg hover:text-slate-300 transition">Jobs</Link>
+          <Link href="/tracker" className="block px-3 py-2 rounded-lg hover:text-slate-300 transition">Tracker</Link>
+          <Link href="/analytics" className="block px-3 py-2 rounded-lg hover:text-slate-300 transition">Analytics</Link>
+          <Link href="/profile" className="block px-3 py-2 rounded-lg hover:text-slate-300 transition">Profile</Link>
         </nav>
       </aside>
       <main className="flex-1 overflow-y-auto p-6">{children}</main>

@@ -10,8 +10,15 @@ async function getToken(): Promise<string | null> {
   return session?.access_token ?? null
 }
 
+export class ApiAuthError extends Error {
+  constructor() {
+    super('Not authenticated')
+  }
+}
+
 export async function apiFetch<T>(path: string, options: RequestInit = {}): Promise<T> {
   const token = await getToken()
+  if (!token) throw new ApiAuthError()
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
   }
@@ -21,7 +28,7 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   }
 
   const res = await fetch(`${API_URL}/api/v1${path}`, { ...options, headers })
-  const json = await res.json()
-  if (!res.ok) throw new Error(json.error ?? 'API error')
+  const json = await res.json().catch(() => ({} as Record<string, unknown>))
+  if (!res.ok) throw new Error((json.error as string | undefined) ?? `HTTP ${res.status}`)
   return json.data as T
 }
