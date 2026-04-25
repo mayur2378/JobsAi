@@ -3,6 +3,7 @@
 import { ProfileForm } from './ProfileForm'
 import { ResumeUploader } from '../resume/ResumeUploader'
 import { ParsedResumePreview } from '../resume/ParsedResumePreview'
+import type { ParsedData } from '../resume/ParsedResumePreview'
 import { SkillsManager } from '../skills/SkillsManager'
 import { useState, useEffect, useRef } from 'react'
 import { apiFetch } from '@/lib/api'
@@ -24,7 +25,7 @@ interface ResumeRecord {
   id: string
   file_name: string
   file_type?: string
-  parsed_data: Record<string, unknown> | null
+  parsed_data: ParsedData | null
   parsed_at: string | null
   is_active: boolean
 }
@@ -37,14 +38,21 @@ interface ProfilePageClientProps {
 export function ProfilePageClient({ profile, userEmail }: ProfilePageClientProps) {
   const [resume, setResume] = useState<ResumeRecord | null>(null)
   const [isParsing, setIsParsing] = useState(false)
+  const [resumeLoadError, setResumeLoadError] = useState<string | null>(null)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   useEffect(() => {
-    apiFetch<ResumeRecord | null>('/resume').then(setResume).catch(() => null)
+    apiFetch<ResumeRecord | null>('/resume')
+      .then(setResume)
+      .catch(() => setResumeLoadError('Failed to load resume'))
     return () => { if (pollRef.current) clearInterval(pollRef.current) }
   }, [])
 
   function handleUploaded(uploaded: ResumeRecord) {
+    if (pollRef.current) {
+      clearInterval(pollRef.current)
+      pollRef.current = null
+    }
     setResume(uploaded)
     setIsParsing(true)
     let attempts = 0
@@ -73,7 +81,11 @@ export function ProfilePageClient({ profile, userEmail }: ProfilePageClientProps
         full_name: profile.full_name ?? '',
         location: profile.location ?? '',
         phone: profile.phone ?? '',
-        work_preference: (profile.work_preference as 'remote' | 'hybrid' | 'onsite') ?? undefined,
+        work_preference: (['remote', 'hybrid', 'onsite'] as const).includes(
+          profile.work_preference as 'remote' | 'hybrid' | 'onsite'
+        )
+          ? (profile.work_preference as 'remote' | 'hybrid' | 'onsite')
+          : undefined,
         years_experience: profile.years_experience?.toString() ?? undefined,
         salary_min: profile.salary_min?.toString() ?? undefined,
         salary_max: profile.salary_max?.toString() ?? undefined,
@@ -104,11 +116,13 @@ export function ProfilePageClient({ profile, userEmail }: ProfilePageClientProps
         style={{ background: '#0f0c1a', border: '1px solid rgba(139,92,246,0.15)' }}
       >
         <h2 className="text-base font-bold text-slate-200">Resume</h2>
+        {resumeLoadError && (
+          <p className="text-red-400 text-sm">{resumeLoadError}</p>
+        )}
         {resume ? (
           <ParsedResumePreview
             fileName={resume.file_name}
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            parsedData={resume.parsed_data as any}
+            parsedData={resume.parsed_data}
             isParsing={isParsing}
           />
         ) : (

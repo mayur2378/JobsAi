@@ -1,4 +1,4 @@
-interface ParsedData {
+export interface ParsedData {
   full_name?: string | null
   skills?: string[]
   experience?: Array<{ title: string; company: string; duration: string }>
