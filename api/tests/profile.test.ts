@@ -98,3 +98,49 @@ describe('POST /api/v1/profile/onboarding', () => {
     expect(res.body.data.onboarding_completed).toBe(true)
   })
 })
+
+describe('GET /api/v1/profile — error path', () => {
+  it('returns 500 when database query fails', async () => {
+    mockVerifyToken()
+    const chain = mockFrom()
+    chain.single.mockResolvedValue({ data: null, error: { message: 'db error' } })
+
+    const res = await request(createApp())
+      .get('/api/v1/profile')
+      .set('Authorization', 'Bearer valid-token')
+
+    expect(res.status).toBe(500)
+    expect(res.body.error).toBe('Failed to fetch profile')
+  })
+})
+
+describe('PUT /api/v1/profile — error path', () => {
+  it('returns 500 when database update fails', async () => {
+    mockVerifyToken()
+    const chain = mockFrom()
+    chain.single.mockResolvedValue({ data: null, error: { message: 'db error' } })
+
+    const res = await request(createApp())
+      .put('/api/v1/profile')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ full_name: 'Bob' })
+
+    expect(res.status).toBe(500)
+    expect(res.body.error).toBe('Failed to update profile')
+  })
+})
+
+describe('POST /api/v1/profile/onboarding — error path', () => {
+  it('returns 500 when database update fails', async () => {
+    mockVerifyToken()
+    const chain = mockFrom()
+    chain.single.mockResolvedValue({ data: null, error: { message: 'db error' } })
+
+    const res = await request(createApp())
+      .post('/api/v1/profile/onboarding')
+      .set('Authorization', 'Bearer valid-token')
+
+    expect(res.status).toBe(500)
+    expect(res.body.error).toBe('Failed to complete onboarding')
+  })
+})
