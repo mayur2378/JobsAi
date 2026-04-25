@@ -96,10 +96,34 @@ describe('PUT /api/v1/skills/:id', () => {
   })
 })
 
+describe('PUT /api/v1/skills/:id — not found', () => {
+  it('returns 404 when skill does not exist or belongs to another user', async () => {
+    mockVerifyToken()
+    const chain = mockFrom()
+    chain.single.mockResolvedValue({ data: null, error: null })
+
+    const res = await request(createApp())
+      .put('/api/v1/skills/nonexistent-id')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ proficiency: 'expert' })
+
+    expect(res.status).toBe(404)
+    expect(res.body.error).toBe('Skill not found')
+  })
+})
+
+describe('GET /api/v1/skills — unauthenticated', () => {
+  it('returns 401 without token', async () => {
+    const res = await request(createApp()).get('/api/v1/skills')
+    expect(res.status).toBe(401)
+  })
+})
+
 describe('DELETE /api/v1/skills/:id', () => {
   it('deletes skill and returns 204', async () => {
     mockVerifyToken()
     const chain = mockFrom()
+    // Two chained .eq() calls in the route: first filters by id, second by user_id
     chain.eq
       .mockReturnValueOnce(chain)
       .mockResolvedValue({ error: null })
