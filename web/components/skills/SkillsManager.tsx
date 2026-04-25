@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { apiFetch } from '@/lib/api'
 
 interface Skill {
@@ -32,18 +32,23 @@ export function SkillsManager({ onReady }: SkillsManagerProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isAdding, setIsAdding] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const onReadyRef = useRef(onReady)
+  useEffect(() => { onReadyRef.current = onReady })
 
   useEffect(() => {
     apiFetch<Skill[]>('/skills')
       .then((data) => {
         setSkills(data)
-        onReady?.(data.length)
+        onReadyRef.current?.(data.length)
       })
       .catch(() => setError('Failed to load skills'))
       .finally(() => setIsLoading(false))
   }, [])
 
   async function addSkill() {
+    setError(null)
     const name = newSkillName.trim()
     if (!name) return
     setIsAdding(true)
@@ -52,9 +57,12 @@ export function SkillsManager({ onReady }: SkillsManagerProps) {
         method: 'POST',
         body: JSON.stringify({ name }),
       })
-      setSkills((prev) => [...prev, skill])
+      setSkills((prev) => {
+        const next = [...prev, skill]
+        onReady?.(next.length)
+        return next
+      })
       setNewSkillName('')
-      onReady?.(skills.length + 1)
     } catch {
       setError('Failed to add skill')
     } finally {
@@ -63,6 +71,7 @@ export function SkillsManager({ onReady }: SkillsManagerProps) {
   }
 
   async function updateProficiency(id: string, proficiency: Skill['proficiency']) {
+    setError(null)
     try {
       const updated = await apiFetch<Skill>(`/skills/${id}`, {
         method: 'PUT',
@@ -75,13 +84,19 @@ export function SkillsManager({ onReady }: SkillsManagerProps) {
   }
 
   async function removeSkill(id: string) {
+    setError(null)
+    setDeletingId(id)
     try {
       await apiFetch(`/skills/${id}`, { method: 'DELETE' })
-      const next = skills.filter((s) => s.id !== id)
-      setSkills(next)
-      onReady?.(next.length)
+      setSkills((prev) => {
+        const next = prev.filter((s) => s.id !== id)
+        onReady?.(next.length)
+        return next
+      })
     } catch {
       setError('Failed to remove skill')
+    } finally {
+      setDeletingId(null)
     }
   }
 
@@ -151,6 +166,7 @@ export function SkillsManager({ onReady }: SkillsManagerProps) {
                   onChange={(e) =>
                     updateProficiency(skill.id, (e.target.value || null) as Skill['proficiency'])
                   }
+                  aria-label={`Proficiency for ${skill.name}`}
                   className="text-xs rounded-md px-2 py-1 border-0 outline-none cursor-pointer"
                   style={{
                     background: skill.proficiency
@@ -166,6 +182,8 @@ export function SkillsManager({ onReady }: SkillsManagerProps) {
                 </select>
                 <button
                   onClick={() => removeSkill(skill.id)}
+                  disabled={deletingId === skill.id}
+                  aria-label={`Remove ${skill.name}`}
                   className="text-slate-600 hover:text-red-400 transition text-xs px-1"
                 >
                   ✕
