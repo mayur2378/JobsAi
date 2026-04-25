@@ -98,6 +98,7 @@ describe('POST /api/v1/resume/upload', () => {
       .attach('file', Buffer.from('plain text'), { filename: 'cv.txt', contentType: 'text/plain' })
 
     expect(res.status).toBe(400)
+    expect(res.body.error).toBe('Only PDF and DOCX files are allowed')
   })
 })
 
@@ -131,6 +132,38 @@ describe('GET /api/v1/resume', () => {
 
     expect(res.status).toBe(200)
     expect(res.body.data.signed_url).toBe('https://signed.url/file.pdf')
+  })
+})
+
+describe('GET /api/v1/resume/status/:id', () => {
+  it('returns resume status when found', async () => {
+    mockVerifyToken()
+    const chain = mockFrom()
+    chain.single.mockResolvedValue({
+      data: { id: 'resume-1', is_active: false, parsed_data: null, parsed_at: null },
+      error: null,
+    })
+
+    const res = await request(createApp())
+      .get('/api/v1/resume/status/resume-1')
+      .set('Authorization', 'Bearer valid-token')
+
+    expect(res.status).toBe(200)
+    expect(res.body.data.id).toBe('resume-1')
+    expect(res.body.data.parsed_data).toBeNull()
+  })
+
+  it('returns 404 when resume not found', async () => {
+    mockVerifyToken()
+    const chain = mockFrom()
+    chain.single.mockResolvedValue({ data: null, error: { code: 'PGRST116' } })
+
+    const res = await request(createApp())
+      .get('/api/v1/resume/status/nonexistent')
+      .set('Authorization', 'Bearer valid-token')
+
+    expect(res.status).toBe(404)
+    expect(res.body.error).toBe('Resume not found')
   })
 })
 

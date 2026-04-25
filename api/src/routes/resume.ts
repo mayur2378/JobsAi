@@ -16,7 +16,11 @@ const upload = multer({
       'application/pdf',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     ]
-    cb(null, allowed.includes(file.mimetype))
+    if (allowed.includes(file.mimetype)) {
+      cb(null, true)
+    } else {
+      cb(new Error('Only PDF and DOCX files are allowed'))
+    }
   },
 })
 
@@ -144,7 +148,9 @@ router.delete('/:id', verifyToken, async (req, res) => {
 
   await supabaseAdmin.storage.from('resumes').remove([resume.file_url])
 
-  await supabaseAdmin.from('resumes').delete().eq('id', resume.id)
+  await supabaseAdmin.from('resumes').delete()
+    .eq('id', resume.id)
+    .eq('user_id', userId)
 
   res.status(204).send()
 })
