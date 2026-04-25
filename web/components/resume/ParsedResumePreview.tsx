@@ -41,7 +41,7 @@ export function ParsedResumePreview({ fileName, parsedData, isParsing }: ParsedR
             <p className="text-slate-400 leading-relaxed text-xs">{parsedData.summary}</p>
           )}
 
-          {parsedData.skills && parsedData.skills.length > 0 && (
+          {Array.isArray(parsedData.skills) && parsedData.skills.length > 0 && (
             <div>
               <p className="text-slate-400 font-medium mb-2 text-xs uppercase tracking-wide">
                 Skills detected ({parsedData.skills.length})
@@ -65,7 +65,7 @@ export function ParsedResumePreview({ fileName, parsedData, isParsing }: ParsedR
             </div>
           )}
 
-          {parsedData.experience && parsedData.experience.length > 0 && (
+          {Array.isArray(parsedData.experience) && parsedData.experience.length > 0 && (
             <div>
               <p className="text-slate-400 font-medium mb-2 text-xs uppercase tracking-wide">Experience</p>
               <div className="space-y-1">

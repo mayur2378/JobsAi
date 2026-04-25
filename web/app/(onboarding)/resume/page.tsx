@@ -6,12 +6,21 @@ import { ResumeUploader } from '@/components/resume/ResumeUploader'
 import { ParsedResumePreview } from '@/components/resume/ParsedResumePreview'
 import { apiFetch } from '@/lib/api'
 
+interface ParsedData {
+  full_name?: string | null
+  skills?: string[]
+  experience?: Array<{ title: string; company: string; duration: string }>
+  education?: Array<{ degree: string; institution: string; year: string }>
+  years_experience?: number | null
+  summary?: string | null
+}
+
 interface ResumeRecord {
   id: string
   file_name: string
   file_type: string
   is_active: boolean
-  parsed_data: Record<string, unknown> | null
+  parsed_data: ParsedData | null
   parsed_at: string | null
 }
 
@@ -34,7 +43,16 @@ export default function OnboardingResumePage() {
 
   function startPolling(resumeId: string) {
     setIsParsing(true)
+    let attempts = 0
+    const MAX_ATTEMPTS = 30
+
     pollRef.current = setInterval(async () => {
+      attempts++
+      if (attempts > MAX_ATTEMPTS) {
+        stopPolling()
+        setIsParsing(false)
+        return
+      }
       try {
         const data = await apiFetch<ResumeRecord>(`/resume/status/${resumeId}`)
         if (data.parsed_data) {
@@ -70,7 +88,7 @@ export default function OnboardingResumePage() {
       ) : (
         <ParsedResumePreview
           fileName={resume.file_name}
-          parsedData={resume.parsed_data as Record<string, unknown> | null}
+          parsedData={resume.parsed_data}
           isParsing={isParsing}
         />
       )}

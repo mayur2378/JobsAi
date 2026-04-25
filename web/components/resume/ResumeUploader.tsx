@@ -25,6 +25,18 @@ export function ResumeUploader({ onUploaded }: ResumeUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   async function uploadFile(file: File) {
+    const MAX_BYTES = 10 * 1024 * 1024
+    if (file.size > MAX_BYTES) {
+      setError('File exceeds the 10 MB limit.')
+      return
+    }
+
+    const ALLOWED = ['application/pdf', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document']
+    if (!ALLOWED.includes(file.type)) {
+      setError('Only PDF and DOCX files are accepted.')
+      return
+    }
+
     setIsUploading(true)
     setError(null)
 
@@ -32,6 +44,7 @@ export function ResumeUploader({ onUploaded }: ResumeUploaderProps) {
       const supabase = createClient()
       const { data: { session } } = await supabase.auth.getSession()
       const token = session?.access_token
+      if (!token) throw new Error('Not authenticated. Please sign in again.')
 
       const formData = new FormData()
       formData.append('file', file)
@@ -68,6 +81,10 @@ export function ResumeUploader({ onUploaded }: ResumeUploaderProps) {
   return (
     <div>
       <div
+        role="button"
+        tabIndex={0}
+        aria-label="Upload resume: click or drag and drop"
+        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') inputRef.current?.click() }}
         onClick={() => inputRef.current?.click()}
         onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
         onDragLeave={() => setIsDragging(false)}
@@ -80,7 +97,11 @@ export function ResumeUploader({ onUploaded }: ResumeUploaderProps) {
       >
         {isUploading ? (
           <div className="space-y-3">
-            <div className="w-10 h-10 rounded-full border-2 border-purple-500/40 border-t-purple-500 animate-spin mx-auto" />
+            <div
+              role="status"
+              aria-label="Uploading resume"
+              className="w-10 h-10 rounded-full border-2 border-purple-500/40 border-t-purple-500 animate-spin mx-auto"
+            />
             <p className="text-slate-400 text-sm">Uploading…</p>
           </div>
         ) : (
