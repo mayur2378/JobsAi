@@ -32,7 +32,7 @@ export async function verifyToken(
     }
 
     ;(req as AuthRequest).userId = user.id
-    ;(req as AuthRequest).userEmail = user.email!
+    ;(req as AuthRequest).userEmail = user.email ?? ''
     next()
   } catch {
     res.status(401).json(failure('Token verification failed'))
