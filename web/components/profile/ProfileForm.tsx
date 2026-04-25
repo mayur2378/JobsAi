@@ -13,28 +13,39 @@ const profileSchema = z.object({
   full_name: z.string().min(1, 'Name is required'),
   location: z.string().optional(),
   phone: z.string().optional(),
-  work_preference: z.enum(['remote', 'hybrid', 'onsite', '']).optional(),
+  work_preference: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.enum(['remote', 'hybrid', 'onsite']).optional()
+  ),
   years_experience: z
     .string()
     .optional()
-    .refine((v) => !v || (!isNaN(Number(v)) && Number(v) >= 0), {
-      message: 'Must be a non-negative number',
+    .refine((v) => !v || (!isNaN(Number(v)) && Number(v) >= 0 && Number.isInteger(Number(v))), {
+      message: 'Must be a whole number (0 or more)',
     }),
   salary_min: z
     .string()
     .optional()
-    .refine((v) => !v || (!isNaN(Number(v)) && Number(v) >= 0), {
-      message: 'Must be a non-negative number',
+    .refine((v) => !v || (!isNaN(Number(v)) && Number(v) >= 0 && Number.isInteger(Number(v))), {
+      message: 'Must be a whole number (0 or more)',
     }),
   salary_max: z
     .string()
     .optional()
-    .refine((v) => !v || (!isNaN(Number(v)) && Number(v) >= 0), {
-      message: 'Must be a non-negative number',
+    .refine((v) => !v || (!isNaN(Number(v)) && Number(v) >= 0 && Number.isInteger(Number(v))), {
+      message: 'Must be a whole number (0 or more)',
     }),
   desired_titles: z.array(z.object({ value: z.string() })).optional(),
   industries: z.array(z.object({ value: z.string() })).optional(),
-})
+}).refine(
+  (d) => {
+    const min = d.salary_min && Number(d.salary_min)
+    const max = d.salary_max && Number(d.salary_max)
+    if (!min || !max) return true
+    return min <= max
+  },
+  { message: 'Min salary must be ≤ max salary', path: ['salary_max'] }
+)
 
 type FormData = z.infer<typeof profileSchema>
 
@@ -62,8 +73,9 @@ export function ProfileForm({
     handleSubmit,
     control,
     formState: { errors },
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } = useForm<FormData>({
-    resolver: zodResolver(profileSchema),
+    resolver: zodResolver(profileSchema) as any,
     defaultValues: defaultValues ?? {},
   })
 
@@ -107,28 +119,29 @@ export function ProfileForm({
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       {/* Name */}
       <div>
-        <label className={labelClass}>Full name *</label>
-        <input {...register('full_name')} placeholder="Alice Johnson" className={inputClass} />
+        <label htmlFor="full_name" className={labelClass}>Full name *</label>
+        <input id="full_name" {...register('full_name')} placeholder="Alice Johnson" className={inputClass} />
         {errors.full_name && <p className="text-red-400 text-xs mt-1">{errors.full_name.message}</p>}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
         {/* Location */}
         <div>
-          <label className={labelClass}>Location</label>
-          <input {...register('location')} placeholder="Austin, TX" className={inputClass} />
+          <label htmlFor="location" className={labelClass}>Location</label>
+          <input id="location" {...register('location')} placeholder="Austin, TX" className={inputClass} />
         </div>
         {/* Phone */}
         <div>
-          <label className={labelClass}>Phone</label>
-          <input {...register('phone')} placeholder="+1 555-000-0000" className={inputClass} />
+          <label htmlFor="phone" className={labelClass}>Phone</label>
+          <input id="phone" {...register('phone')} placeholder="+1 555-000-0000" className={inputClass} />
         </div>
       </div>
 
       {/* Work preference */}
       <div>
-        <label className={labelClass}>Work preference</label>
+        <label htmlFor="work_preference" className={labelClass}>Work preference</label>
         <select
+          id="work_preference"
           {...register('work_preference')}
           className={inputClass}
           style={{ appearance: 'none' }}
@@ -143,8 +156,9 @@ export function ProfileForm({
       <div className="grid grid-cols-3 gap-4">
         {/* Years experience */}
         <div>
-          <label className={labelClass}>Years exp.</label>
+          <label htmlFor="years_experience" className={labelClass}>Years exp.</label>
           <input
+            id="years_experience"
             {...register('years_experience')}
             type="number"
             min="0"
@@ -157,8 +171,9 @@ export function ProfileForm({
         </div>
         {/* Salary min */}
         <div>
-          <label className={labelClass}>Min salary ($)</label>
+          <label htmlFor="salary_min" className={labelClass}>Min salary ($)</label>
           <input
+            id="salary_min"
             {...register('salary_min')}
             type="number"
             min="0"
@@ -171,8 +186,9 @@ export function ProfileForm({
         </div>
         {/* Salary max */}
         <div>
-          <label className={labelClass}>Max salary ($)</label>
+          <label htmlFor="salary_max" className={labelClass}>Max salary ($)</label>
           <input
+            id="salary_max"
             {...register('salary_max')}
             type="number"
             min="0"
