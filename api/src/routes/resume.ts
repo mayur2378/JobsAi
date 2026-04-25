@@ -130,13 +130,14 @@ router.get('/status/:id', verifyToken, async (req, res) => {
 router.delete('/:id', verifyToken, async (req, res) => {
   const { userId } = req as AuthRequest
 
-  // Fetch by id, then verify ownership in code
   const { data: resume, error: fetchError } = await supabaseAdmin
     .from('resumes')
-    .select('id, file_url, user_id')
+    .select('id, file_url')
+    .eq('id', req.params.id)
+    .eq('user_id', userId)
     .single()
 
-  if (fetchError || !resume || resume.user_id !== userId) {
+  if (fetchError || !resume) {
     res.status(404).json(failure('Resume not found'))
     return
   }

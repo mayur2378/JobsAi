@@ -139,13 +139,12 @@ describe('DELETE /api/v1/resume/:id', () => {
     mockVerifyToken()
     mockStorage()
     const chain = mockFrom()
-    // First call: fetch the resume to get file_url
+    // The fetch SELECT chains: .eq('id', ...).eq('user_id', ...).single()
+    // eq calls must return chain (for chaining), single resolves
     chain.single.mockResolvedValue({
-      data: { id: 'resume-1', file_url: 'user-abc/uuid-cv.pdf', user_id: 'user-abc' },
+      data: { id: 'resume-1', file_url: 'user-abc/uuid-cv.pdf' },
       error: null,
     })
-    // Second call: delete
-    chain.eq.mockResolvedValue({ error: null })
 
     const res = await request(createApp())
       .delete('/api/v1/resume/resume-1')
