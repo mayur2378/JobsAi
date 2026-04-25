@@ -39,20 +39,6 @@ const MOCK_PARSED: Record<string, unknown> = {
   summary: 'Experienced engineer',
 }
 
-// Helper to get the mock messages.create function from the singleton anthropic instance
-function getMockCreate(): jest.Mock {
-  const MockedAnthropic = Anthropic as jest.MockedClass<typeof Anthropic>
-  // After clearMocks, mock.results is cleared. Re-instantiate to get a fresh ref,
-  // or retrieve from mock.instances[0] which is also cleared.
-  // Instead, rely on the fact that the module-level `anthropic` instance was created
-  // at module load and its `messages.create` is the same jest.fn() from the factory.
-  // We access it via mock.instances[0] which survives clearMocks in some jest versions,
-  // but to be safe we get it from the constructor calls before clearMocks cleared them.
-  // Simplest: call the mock constructor ourselves to get a new instance reference.
-  const instance = new MockedAnthropic()
-  return instance.messages.create as jest.Mock
-}
-
 describe('parseResume', () => {
   let mockCreate: jest.Mock
 
