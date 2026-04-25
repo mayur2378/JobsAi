@@ -30,5 +30,6 @@ export async function apiFetch<T>(path: string, options: RequestInit = {}): Prom
   const res = await fetch(`${API_URL}/api/v1${path}`, { ...options, headers })
   const json = await res.json().catch(() => ({} as Record<string, unknown>))
   if (!res.ok) throw new Error((json.error as string | undefined) ?? `HTTP ${res.status}`)
+  if (res.status === 204) return undefined as T
   return json.data as T
 }
