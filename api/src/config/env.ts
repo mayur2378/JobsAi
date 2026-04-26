@@ -9,6 +9,7 @@ const envSchema = z.object({
   ANTHROPIC_API_KEY: z.string().default(''),
   RESEND_API_KEY: z.string().default(''),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
+  RAPIDAPI_KEY: z.string().default(''),
 })
 
 export type Env = z.infer<typeof envSchema>
