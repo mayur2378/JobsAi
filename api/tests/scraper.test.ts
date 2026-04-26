@@ -15,6 +15,8 @@ describe('buildQueries', () => {
     expect(queries).toHaveLength(4)
     expect(queries[0]).toMatchObject({ query: 'Frontend Engineer Austin, TX', remoteOnly: false })
     expect(queries[1]).toMatchObject({ query: 'Frontend Engineer Remote', remoteOnly: false })
+    expect(queries[2]).toMatchObject({ query: 'React Developer Austin, TX', remoteOnly: false })
+    expect(queries[3]).toMatchObject({ query: 'React Developer Remote', remoteOnly: false })
   })
 
   it('produces remote-only query when work_preference is remote and no locations', () => {
@@ -72,5 +74,11 @@ describe('mapJSearchJob', () => {
     const mapped = mapJSearchJob(minimal)
     expect(mapped.extracted_skills).toEqual([])
     expect(mapped.location).toBe(', ')
+    expect(mapped.salary_min).toBeNull()
+    expect(mapped.salary_max).toBeNull()
+    expect(mapped.apply_url).toBeNull()
+    expect(mapped.posted_at).toBeNull()
+    expect(mapped.requirements).toBeNull()
+    expect(mapped.description).toBeNull()
   })
 })

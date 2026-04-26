@@ -55,9 +55,9 @@ export function mapJSearchJob(raw: any): {
   const descText = `${raw.job_description ?? ''} ${requirements ?? ''}`
 
   return {
-    external_id: raw.job_id,
+    external_id: raw.job_id ?? '',
     source: 'jsearch',
-    title: raw.job_title,
+    title: raw.job_title ?? '',
     company: raw.employer_name ?? null,
     location: `${raw.job_city ?? ''}, ${raw.job_country ?? ''}`,
     is_remote: raw.job_is_remote ?? false,
@@ -120,7 +120,7 @@ export async function scrapeJobsForUser(
       .select('id, external_id')
 
     if (error) {
-      console.error('[scraper] Insert error:', error.message)
+      console.error(`[scraper] Insert error for query "${q.query}" (${mapped.length} records):`, error.message)
       continue
     }
 
