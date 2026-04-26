@@ -1,7 +1,7 @@
 export const SKILL_VOCABULARY: string[] = [
   // Languages
-  'javascript', 'typescript', 'python', 'java', 'go', 'golang', 'rust', 'c++', 'c#', 'ruby',
-  'swift', 'kotlin', 'scala', 'php', 'r', 'matlab', 'dart', 'elixir', 'haskell', 'clojure',
+  'javascript', 'typescript', 'python', 'java', 'golang', 'rust', 'c++', 'c#', 'ruby',
+  'swift', 'kotlin', 'scala', 'php', 'matlab', 'dart', 'elixir', 'haskell', 'clojure',
   // Frontend frameworks
   'react', 'vue', 'angular', 'svelte', 'next.js', 'nuxt.js', 'remix', 'gatsby',
   'react native', 'flutter', 'ionic', 'electron',
@@ -19,7 +19,7 @@ export const SKILL_VOCABULARY: string[] = [
   'git', 'github', 'gitlab', 'jira', 'confluence', 'figma', 'sketch',
   'vercel', 'netlify', 'heroku', 'railway', 'render',
   // APIs & Protocols
-  'rest', 'graphql', 'grpc', 'websockets', 'oauth', 'jwt', 'saml',
+  'graphql', 'grpc', 'websockets', 'oauth', 'jwt', 'saml',
   // CSS & UI
   'html', 'css', 'sass', 'tailwindcss', 'bootstrap', 'materialui', 'shadcn',
   // Testing

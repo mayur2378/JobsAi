@@ -37,4 +37,11 @@ describe('extractSkills', () => {
     expect(skills).toContain('machine learning')
     expect(skills).toContain('deep learning')
   })
+
+  it('does not extract partial word matches', () => {
+    const text = 'Expert in JavaScript frameworks'
+    const skills = extractSkills(text)
+    expect(skills).toContain('javascript')
+    expect(skills).not.toContain('java')
+  })
 })
