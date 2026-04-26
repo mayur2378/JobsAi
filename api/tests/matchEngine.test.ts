@@ -183,3 +183,85 @@ describe('computePhase1', () => {
     expect(result.label).toBe('low')
   })
 })
+
+// ─── Phase 2 tests ───────────────────────────────────────────────────────────
+
+import { runPhase2ForMatch } from '../src/workers/matchEngine'
+import Anthropic from '@anthropic-ai/sdk'
+
+jest.mock('@anthropic-ai/sdk')
+
+const MockAnthropic = Anthropic as jest.MockedClass<typeof Anthropic>
+
+describe('runPhase2ForMatch', () => {
+  const mockMatchId = 'match-uuid-1'
+  const mockJob = {
+    id: 'job-uuid-1',
+    title: 'Frontend Engineer',
+    company: 'Acme',
+    description: 'We use React and TypeScript.',
+    requirements: '3+ years experience.',
+  }
+  const mockParsedResume = {
+    skills: ['React', 'TypeScript'],
+    keywords: ['react', 'typescript'],
+    experience: [],
+    education: [],
+  }
+
+  beforeEach(() => {
+    jest.clearAllMocks()
+  })
+
+  it('calls Anthropic with the resume in the system prompt', async () => {
+    const mockCreate = jest.fn().mockResolvedValue({
+      content: [
+        {
+          type: 'text',
+          text: JSON.stringify({
+            refined_score: 85,
+            skills_matched: ['React', 'TypeScript'],
+            skills_missing: ['GraphQL'],
+            explanation: 'Strong match.',
+            gaps_to_improve: ['Learn GraphQL'],
+          }),
+        },
+      ],
+    })
+
+    MockAnthropic.prototype.messages = { create: mockCreate } as any
+
+    // Mock supabase update
+    const { supabaseAdmin } = require('../src/config/supabase')
+    jest.spyOn(supabaseAdmin, 'from').mockReturnValue({
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      then: (resolve: (v: unknown) => unknown) => resolve({ error: null }),
+    })
+
+    await runPhase2ForMatch(mockMatchId, mockJob as any, mockParsedResume as any)
+
+    expect(mockCreate).toHaveBeenCalledTimes(1)
+    const call = mockCreate.mock.calls[0][0]
+    expect(call.system[0].text).toContain('resume')
+    expect(call.messages[0].content).toContain('Frontend Engineer')
+  })
+
+  it('sets ai_refined=false and does not throw when Claude returns invalid JSON', async () => {
+    const mockCreate = jest.fn().mockResolvedValue({
+      content: [{ type: 'text', text: 'not valid json at all' }],
+    })
+    MockAnthropic.prototype.messages = { create: mockCreate } as any
+
+    const { supabaseAdmin } = require('../src/config/supabase')
+    jest.spyOn(supabaseAdmin, 'from').mockReturnValue({
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      then: (resolve: (v: unknown) => unknown) => resolve({ error: null }),
+    })
+
+    await expect(
+      runPhase2ForMatch(mockMatchId, mockJob as any, mockParsedResume as any)
+    ).resolves.not.toThrow()
+  })
+})
