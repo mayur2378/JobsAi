@@ -152,7 +152,7 @@ describe('computePhase1', () => {
     expect(result.breakdown).toHaveProperty('title')
   })
 
-  it('assigns excellent label for high score (>= 80)', () => {
+  it('assigns excellent label for high score', () => {
     const job = {
       title: 'Frontend Engineer',
       location: 'Austin, TX',
@@ -164,7 +164,8 @@ describe('computePhase1', () => {
       extracted_skills: ['react', 'typescript', 'node.js'],
     }
     const result = computePhase1(job, userProfile, userSkills, keywords)
-    expect(result.score).toBeGreaterThanOrEqual(70) // near-perfect match
+    expect(result.score).toBeGreaterThanOrEqual(80)
+    expect(result.label).toBe('excellent')
   })
 
   it('assigns low label for score below 40', () => {

@@ -1,8 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk'
-import PQueue from 'p-queue'
-import { supabaseAdmin } from '../config/supabase'
-import { env } from '../config/env'
-
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 export interface UserMatchProfile {
@@ -38,6 +33,8 @@ export interface Phase1Result {
     salary: number
   }
 }
+
+// 'possible' from the DB match_label_enum is intentionally unused — Phase 1 uses 4 bands only.
 
 // ─── Phase 1 — pure scoring functions ────────────────────────────────────────
 
@@ -89,7 +86,7 @@ export function scoreLocation(
 export function scoreYearsExp(jobText: string, userYearsExp: number | null): number {
   if (userYearsExp === null) return 0
   const match = jobText.match(
-    /(\d+)\+?\s*(?:[-–to]+\s*(\d+)\s*)?years?\s+(?:of\s+)?experience/i
+    /(\d+)\+?\s*(?:[-–to]+\s*(\d+)\s*)?years?\s+(?:of\s+)?(?:\w+\s+)?experience/i
   )
   if (!match) return 7
   const min = parseInt(match[1])
@@ -124,8 +121,8 @@ export function scoreSalary(
   const overlapEnd = Math.min(jMax, uMax)
 
   if (overlapEnd < overlapStart) return 0
-  const jobRange = Math.max(jMax - jMin, 1)
-  return Math.round(Math.min((overlapEnd - overlapStart) / jobRange, 1) * 5)
+  const relevantRange = Math.max(Math.min(jMax - jMin, uMax - uMin), 1)
+  return Math.round(Math.min((overlapEnd - overlapStart) / relevantRange, 1) * 5)
 }
 
 export function computePhase1(
