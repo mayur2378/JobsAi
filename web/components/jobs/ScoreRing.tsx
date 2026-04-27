@@ -16,8 +16,8 @@ const LABEL_CONFIG: Record<string, { display: string; color: string; border: str
   strong: {
     display: 'Good',
     color: '#a78bfa',
-    border: 'rgba(139,92,246,0.4)',
-    bg: 'rgba(139,92,246,0.08)',
+    border: 'rgba(167,139,250,0.4)',
+    bg: 'rgba(167,139,250,0.08)',
   },
   good: {
     display: 'Possible',
@@ -38,7 +38,7 @@ export function ScoreRing({ score, label, size = 'sm', showLabel = true, isRefin
   const isLg = size === 'lg'
 
   return (
-    <div className="flex flex-col items-center" style={{ minWidth: isLg ? 72 : 52 }}>
+    <div className="flex flex-col items-center" style={{ minWidth: isLg ? 72 : 44 }}>
       <div
         style={{
           width: isLg ? 72 : 44,
@@ -60,7 +60,7 @@ export function ScoreRing({ score, label, size = 'sm', showLabel = true, isRefin
           {score}
         </span>
       </div>
-      {showLabel && (
+      {showLabel && !isRefining && (
         <span
           className="font-mono text-center"
           style={{ fontSize: 8, textTransform: 'uppercase', letterSpacing: '.06em', color: '#64748b' }}
