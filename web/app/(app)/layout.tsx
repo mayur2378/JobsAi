@@ -16,10 +16,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   if (!profile?.onboarding_completed) redirect('/onboarding/profile')
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#0a0a0f' }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-base)' }}>
       <aside
         className="w-52 flex-shrink-0 flex flex-col py-4"
-        style={{ background: '#0f0c1a', borderRight: '1px solid rgba(139,92,246,0.12)' }}
+        style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border-default)' }}
       >
         <div
           className="px-4 pb-4 font-mono text-sm font-bold"

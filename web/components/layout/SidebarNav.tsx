@@ -23,11 +23,12 @@ export function SidebarNav() {
           <Link
             key={href}
             href={href}
-            className="flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-150"
-            style={{
-              color: active ? '#a78bfa' : '#64748b',
-              background: active ? 'rgba(139,92,246,0.12)' : 'transparent',
-            }}
+            aria-current={active ? 'page' : undefined}
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg transition-all duration-150 text-sm ${
+              active
+                ? 'text-violet-400 bg-violet-500/10'
+                : 'text-slate-500 hover:bg-violet-500/5 hover:text-slate-300'
+            }`}
           >
             <Icon size={14} strokeWidth={1.5} />
             {label}
