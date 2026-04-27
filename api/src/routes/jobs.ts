@@ -51,7 +51,7 @@ router.get('/', verifyToken, async (req, res) => {
     }
   }
 
-  let query = supabaseAdmin
+  const baseQuery = supabaseAdmin
     .from('job_matches')
     .select(
       `match_score, match_label, refined_score, ai_refined, job_id,
@@ -60,38 +60,39 @@ router.get('/', verifyToken, async (req, res) => {
     )
     .eq('user_id', userId)
     .gte('match_score', min_score ?? 0)
+    .order('match_score', { ascending: false })
 
-  if (statusJobIds) {
-    query = (query as any).in('job_id', statusJobIds)
-  }
+  const withStatus = statusJobIds ? baseQuery.in('job_id', statusJobIds) : baseQuery
+  const withRemote = remote !== undefined ? (withStatus as any).eq('jobs.is_remote', remote) : withStatus
 
-  if (remote !== undefined) {
-    query = (query as any).eq('jobs.is_remote', remote)
-  }
-
-  const { data: matches, error, count } = await (query as any).range(offset, offset + limit - 1)
+  const { data: matches, error, count } = await withRemote.range(offset, offset + limit - 1)
 
   if (error) {
     res.status(500).json(failure('Failed to fetch jobs'))
     return
   }
 
-  const matchList = (matches ?? []) as any[]
-  const jobIds = matchList.map((m) => m.job_id)
+  const matchList = matches ?? []
+  const jobIds = matchList.map((m: any) => m.job_id)
 
-  const { data: applications } = jobIds.length > 0
+  const appQueryResult = jobIds.length > 0
     ? await supabaseAdmin
         .from('job_applications')
         .select('job_id, status')
         .eq('user_id', userId)
         .in('job_id', jobIds)
-    : { data: [] }
+    : { data: [], error: null }
+
+  if (appQueryResult.error) {
+    res.status(500).json(failure('Failed to fetch application status'))
+    return
+  }
 
   const appMap = new Map(
-    (applications ?? []).map((a: { job_id: string; status: string }) => [a.job_id, a.status])
+    (appQueryResult.data ?? []).map((a: { job_id: string; status: string }) => [a.job_id, a.status])
   )
 
-  const jobs = matchList.map((m) => ({
+  const jobs = matchList.map((m: any) => ({
     ...m.jobs,
     match_score: m.match_score,
     match_label: m.match_label,
@@ -100,7 +101,7 @@ router.get('/', verifyToken, async (req, res) => {
     application_status: appMap.get(m.job_id) ?? null,
   }))
 
-  res.json(success({ jobs, total: count ?? jobs.length, page, limit }))
+  res.json(success({ jobs, total: count ?? 0, page, limit }))
 })
 
 // POST /jobs/refresh — manual trigger (rate-limited 1/hour/user)
@@ -129,10 +130,14 @@ router.post('/refresh', verifyToken, async (req, res) => {
     }
   }
 
-  await supabaseAdmin
+  const { error: updateError } = await supabaseAdmin
     .from('profiles')
     .update({ last_refresh_at: new Date().toISOString() })
     .eq('id', userId)
+
+  if (updateError) {
+    console.error('[jobs/refresh] Failed to update last_refresh_at:', updateError.message)
+  }
 
   // Fire-and-forget: scrape + match
   ;(async () => {

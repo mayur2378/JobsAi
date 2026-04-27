@@ -26,9 +26,9 @@ function makeChain(result: { data: unknown; error: unknown; count?: number | nul
   ;['select', 'eq', 'neq', 'gte', 'lte', 'not', 'limit', 'update', 'upsert', 'insert', 'delete'].forEach(
     (m) => { t[m] = jest.fn(() => t) }
   )
-  ;['single', 'order', 'in'].forEach((m) => {
-    t[m] = jest.fn(() => Promise.resolve(result))
-  })
+  t.single = jest.fn(() => Promise.resolve(result))
+  t.order = jest.fn(() => t)
+  t.in = jest.fn(() => t)
   t.range = jest.fn(() => Promise.resolve(result))
   t.then = (resolve: (v: unknown) => unknown) => resolve(result)
   return t
@@ -41,7 +41,10 @@ function authAs(userId: string) {
   })
 }
 
-const app = createApp()
+let app: ReturnType<typeof createApp>
+beforeAll(() => {
+  app = createApp()
+})
 
 describe('GET /api/v1/jobs', () => {
   it('returns 401 without auth token', async () => {
