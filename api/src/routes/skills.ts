@@ -4,6 +4,7 @@ import { verifyToken, AuthRequest } from '../middleware/auth'
 import { validate } from '../middleware/validate'
 import { supabaseAdmin } from '../config/supabase'
 import { success, failure } from '../types'
+import { recomputeForUser } from '../workers/matchEngine'
 
 const router = Router()
 
@@ -45,6 +46,7 @@ router.post('/', verifyToken, validate(createSkillSchema), async (req, res) => {
     return
   }
   res.status(201).json(success(data))
+  recomputeForUser(userId).catch(console.error)
 })
 
 router.put('/:id', verifyToken, validate(updateSkillSchema), async (req, res) => {
@@ -62,6 +64,7 @@ router.put('/:id', verifyToken, validate(updateSkillSchema), async (req, res) =>
     return
   }
   res.json(success(data))
+  recomputeForUser(userId).catch(console.error)
 })
 
 router.delete('/:id', verifyToken, async (req, res) => {
@@ -77,6 +80,7 @@ router.delete('/:id', verifyToken, async (req, res) => {
     return
   }
   res.status(204).send()
+  recomputeForUser(userId).catch(console.error)
 })
 
 export default router

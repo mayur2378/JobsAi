@@ -6,6 +6,7 @@ const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: str
 import mammoth from 'mammoth'
 import { supabaseAdmin } from '../config/supabase'
 import { env } from '../config/env'
+import { recomputeForUser } from '../workers/matchEngine'
 
 const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })
 
@@ -96,6 +97,10 @@ export async function parseResumeAsync(
         parsed.skills.map((name) => ({ user_id: userId, name, source: 'resume' }))
       )
     }
+
+    recomputeForUser(userId).catch((err) =>
+      console.error('[resumeParser] Recompute failed:', err)
+    )
   } catch (err) {
     console.error('[resumeParser] Parsing failed:', err)
     // Non-fatal: the resume record stays in DB; user can trigger reparse
