@@ -191,6 +191,14 @@ import Anthropic from '@anthropic-ai/sdk'
 
 jest.mock('@anthropic-ai/sdk')
 
+jest.mock('../src/config/supabase', () => ({
+  supabaseAdmin: {
+    from: jest.fn(),
+  },
+}))
+
+import { supabaseAdmin } from '../src/config/supabase'
+
 const MockAnthropic = Anthropic as jest.MockedClass<typeof Anthropic>
 
 describe('runPhase2ForMatch', () => {
@@ -211,6 +219,10 @@ describe('runPhase2ForMatch', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    ;(supabaseAdmin.from as jest.Mock).mockReturnValue({
+      update: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockResolvedValue({ error: null }),
+    })
   })
 
   it('calls Anthropic with the resume in the system prompt', async () => {
@@ -231,14 +243,6 @@ describe('runPhase2ForMatch', () => {
 
     MockAnthropic.prototype.messages = { create: mockCreate } as any
 
-    // Mock supabase update
-    const { supabaseAdmin } = require('../src/config/supabase')
-    jest.spyOn(supabaseAdmin, 'from').mockReturnValue({
-      update: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      then: (resolve: (v: unknown) => unknown) => resolve({ error: null }),
-    })
-
     await runPhase2ForMatch(mockMatchId, mockJob as any, mockParsedResume as any)
 
     expect(mockCreate).toHaveBeenCalledTimes(1)
@@ -253,15 +257,11 @@ describe('runPhase2ForMatch', () => {
     })
     MockAnthropic.prototype.messages = { create: mockCreate } as any
 
-    const { supabaseAdmin } = require('../src/config/supabase')
-    jest.spyOn(supabaseAdmin, 'from').mockReturnValue({
-      update: jest.fn().mockReturnThis(),
-      eq: jest.fn().mockReturnThis(),
-      then: (resolve: (v: unknown) => unknown) => resolve({ error: null }),
-    })
-
     await expect(
       runPhase2ForMatch(mockMatchId, mockJob as any, mockParsedResume as any)
     ).resolves.not.toThrow()
+
+    const fromMock = supabaseAdmin.from as jest.Mock
+    expect(fromMock).toHaveBeenCalledWith('job_matches')
   })
 })

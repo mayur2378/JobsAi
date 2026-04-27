@@ -208,7 +208,7 @@ Output raw JSON only — no markdown, no code blocks.
 
 Candidate resume:
 ${JSON.stringify(parsedResume)}`,
-          cache_control: { type: 'ephemeral' } as any,
+          cache_control: { type: 'ephemeral' } as any, // SDK types don't yet expose cache_control; valid API field
         },
       ],
       messages: [
@@ -231,7 +231,7 @@ Requirements: ${job.requirements ?? ''}`,
   }
 
   if (output) {
-    await supabaseAdmin
+    const { error: updateErr } = await supabaseAdmin
       .from('job_matches')
       .update({
         refined_score: output.refined_score,
@@ -243,11 +243,13 @@ Requirements: ${job.requirements ?? ''}`,
         refined_at: new Date().toISOString(),
       })
       .eq('id', matchId)
+    if (updateErr) console.error('[matchEngine] Failed to save Phase 2 result for match', matchId, updateErr.message)
   } else {
-    await supabaseAdmin
+    const { error: fallbackErr } = await supabaseAdmin
       .from('job_matches')
       .update({ ai_refined: false })
       .eq('id', matchId)
+    if (fallbackErr) console.error('[matchEngine] Failed to set ai_refined=false for match', matchId, fallbackErr.message)
   }
 }
 
@@ -291,7 +293,7 @@ export async function runPipelineForJobs(
 
   const userSkills: string[] = (skillsResult.data ?? []).map((s: { name: string }) => s.name)
   const parsedResume = resumeResult.data?.parsed_data ?? null
-  const keywords: string[] = (parsedResume as any)?.keywords ?? []
+  const keywords: string[] = (parsedResume as { keywords?: string[] } | null)?.keywords ?? []
 
   // Fetch the new jobs
   const { data: jobs } = await supabaseAdmin
@@ -301,47 +303,49 @@ export async function runPipelineForJobs(
 
   if (!jobs) return
 
-  const phase2Jobs: Array<{ matchId: string; job: JobForPhase2 }> = []
-
-  for (const job of jobs) {
-    const phase1 = computePhase1(
-      {
-        title: job.title,
-        location: job.location,
-        is_remote: job.is_remote,
-        description: job.description,
-        requirements: job.requirements,
-        salary_min: job.salary_min,
-        salary_max: job.salary_max,
-        extracted_skills: job.extracted_skills ?? [],
-      },
-      profile,
-      userSkills,
-      keywords
-    )
-
-    const { data: matchRow } = await supabaseAdmin
-      .from('job_matches')
-      .upsert(
+  const phase2JobsRaw = await Promise.all(
+    jobs.map(async (job) => {
+      const phase1 = computePhase1(
         {
-          user_id: userId,
-          job_id: job.id,
-          match_score: phase1.score,
-          match_label: phase1.label,
-          match_breakdown: phase1.breakdown,
-          computed_at: new Date().toISOString(),
+          title: job.title,
+          location: job.location,
+          is_remote: job.is_remote,
+          description: job.description,
+          requirements: job.requirements,
+          salary_min: job.salary_min,
+          salary_max: job.salary_max,
+          extracted_skills: job.extracted_skills ?? [],
         },
-        { onConflict: 'user_id,job_id' }
+        profile,
+        userSkills,
+        keywords
       )
-      .select('id')
-      .single()
 
-    if (matchRow && phase1.score >= 40 && parsedResume) {
-      phase2Jobs.push({ matchId: matchRow.id, job })
-    }
-  }
+      const { data: matchRow } = await supabaseAdmin
+        .from('job_matches')
+        .upsert(
+          {
+            user_id: userId,
+            job_id: job.id,
+            match_score: phase1.score,
+            match_label: phase1.label,
+            match_breakdown: phase1.breakdown,
+            computed_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id,job_id' }
+        )
+        .select('id')
+        .single()
 
-  // Queue Phase 2 for matches scoring >= 40
+      if (matchRow && phase1.score >= 40 && parsedResume) {
+        return { matchId: matchRow.id, job: job as JobForPhase2 }
+      }
+      return null
+    })
+  )
+
+  const phase2Jobs = phase2JobsRaw.filter(Boolean) as Array<{ matchId: string; job: JobForPhase2 }>
+
   for (const { matchId, job } of phase2Jobs) {
     phase2Queue.add(() => runPhase2ForMatch(matchId, job, parsedResume as Record<string, unknown>))
   }
