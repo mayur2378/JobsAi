@@ -21,7 +21,7 @@ jest.mock('../src/workers/scraper', () => ({
 const mockSbFrom = supabaseAdmin.from as jest.Mock
 const mockGetUser = supabaseAdmin.auth.getUser as jest.Mock
 
-function makeChain(result: { data: unknown; error: unknown }) {
+function makeChain(result: { data: unknown; error: unknown; count?: number | null }) {
   const t: any = {}
   ;['select', 'eq', 'neq', 'gte', 'lte', 'not', 'limit', 'update', 'upsert', 'insert', 'delete'].forEach(
     (m) => { t[m] = jest.fn(() => t) }
@@ -74,6 +74,7 @@ describe('GET /api/v1/jobs', () => {
           },
         ],
         error: null,
+        count: 1,
       })
     )
     mockSbFrom.mockReturnValueOnce(makeChain({ data: [], error: null }))

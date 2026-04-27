@@ -55,7 +55,8 @@ router.get('/', verifyToken, async (req, res) => {
     .from('job_matches')
     .select(
       `match_score, match_label, refined_score, ai_refined, job_id,
-       jobs!inner(id, title, company, location, is_remote, salary_min, salary_max, apply_url, posted_at)`
+       jobs!inner(id, title, company, location, is_remote, salary_min, salary_max, apply_url, posted_at)`,
+      { count: 'exact' }
     )
     .eq('user_id', userId)
     .gte('match_score', min_score ?? 0)
@@ -64,7 +65,11 @@ router.get('/', verifyToken, async (req, res) => {
     query = (query as any).in('job_id', statusJobIds)
   }
 
-  const { data: matches, error } = await (query as any).range(offset, offset + limit - 1)
+  if (remote !== undefined) {
+    query = (query as any).eq('jobs.is_remote', remote)
+  }
+
+  const { data: matches, error, count } = await (query as any).range(offset, offset + limit - 1)
 
   if (error) {
     res.status(500).json(failure('Failed to fetch jobs'))
@@ -86,18 +91,16 @@ router.get('/', verifyToken, async (req, res) => {
     (applications ?? []).map((a: { job_id: string; status: string }) => [a.job_id, a.status])
   )
 
-  const jobs = matchList
-    .map((m) => ({
-      ...m.jobs,
-      match_score: m.match_score,
-      match_label: m.match_label,
-      refined_score: m.refined_score,
-      ai_refined: m.ai_refined,
-      application_status: appMap.get(m.job_id) ?? null,
-    }))
-    .filter((j) => remote === undefined || j.is_remote === remote)
+  const jobs = matchList.map((m) => ({
+    ...m.jobs,
+    match_score: m.match_score,
+    match_label: m.match_label,
+    refined_score: m.refined_score,
+    ai_refined: m.ai_refined,
+    application_status: appMap.get(m.job_id) ?? null,
+  }))
 
-  res.json(success({ jobs, total: jobs.length, page, limit }))
+  res.json(success({ jobs, total: count ?? jobs.length, page, limit }))
 })
 
 // POST /jobs/refresh — manual trigger (rate-limited 1/hour/user)
