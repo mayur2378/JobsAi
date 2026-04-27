@@ -69,18 +69,23 @@ router.put('/:id', verifyToken, validate(updateSkillSchema), async (req, res) =>
 
 router.delete('/:id', verifyToken, async (req, res) => {
   const { userId } = req as AuthRequest
-  const { error } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from('skills')
     .delete()
     .eq('id', req.params.id)
     .eq('user_id', userId)
+    .select()
 
   if (error) {
     res.status(500).json(failure('Failed to delete skill'))
     return
   }
-  res.status(204).send()
+  if (!data || data.length === 0) {
+    res.status(404).json(failure('Skill not found'))
+    return
+  }
   recomputeForUser(userId).catch(console.error)
+  res.status(204).send()
 })
 
 export default router

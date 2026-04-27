@@ -123,15 +123,29 @@ describe('DELETE /api/v1/skills/:id', () => {
   it('deletes skill and returns 204', async () => {
     mockVerifyToken()
     const chain = mockFrom()
-    // Two chained .eq() calls in the route: first filters by id, second by user_id
-    chain.eq
-      .mockReturnValueOnce(chain)
-      .mockResolvedValue({ error: null })
+    // Route calls: .delete().eq(id).eq(user_id).select() — resolve on select()
+    chain.select.mockResolvedValueOnce({
+      data: [{ id: 'skill-1' }],
+      error: null,
+    })
 
     const res = await request(createApp())
       .delete('/api/v1/skills/skill-1')
       .set('Authorization', 'Bearer valid-token')
 
     expect(res.status).toBe(204)
+  })
+
+  it('returns 404 when skill does not exist or belongs to another user', async () => {
+    mockVerifyToken()
+    const chain = mockFrom()
+    chain.select.mockResolvedValueOnce({ data: [], error: null })
+
+    const res = await request(createApp())
+      .delete('/api/v1/skills/nonexistent-id')
+      .set('Authorization', 'Bearer valid-token')
+
+    expect(res.status).toBe(404)
+    expect(res.body.error).toBe('Skill not found')
   })
 })
