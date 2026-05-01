@@ -1,5 +1,5 @@
 import { Suspense } from 'react'
-import { serverFetch } from '@/lib/api'
+import { serverFetch } from '@/lib/server-api'
 import { JobFilters } from '@/components/jobs/JobFilters'
 import { JobList } from '@/components/jobs/JobList'
 import { Pagination } from '@/components/jobs/Pagination'

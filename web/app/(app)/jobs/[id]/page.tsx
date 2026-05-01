@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
-import { serverFetch } from '@/lib/api'
+import { serverFetch } from '@/lib/server-api'
 import { MatchPanel } from '@/components/jobs/MatchPanel'
 import { StatusSelector } from '@/components/jobs/StatusSelector'
 import type { AppStatus } from '@/components/jobs/StatusSelector'

@@ -1,5 +1,5 @@
 // web/app/(app)/tracker/page.tsx
-import { serverFetch } from '@/lib/api'
+import { serverFetch } from '@/lib/server-api'
 import { KanbanBoard } from '@/components/tracker/KanbanBoard'
 
 export interface TrackerJob {
