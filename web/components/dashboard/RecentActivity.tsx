@@ -54,7 +54,7 @@ async function fetchActivity(userId: string): Promise<ActivityItem[]> {
   // Recent application status changes
   const { data: recentApps } = await supabase
     .from('job_applications')
-    .select(`status, updated_at, jobs!inner(title, company)`)
+    .select(`id, status, updated_at, jobs!inner(title, company)`)
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
     .limit(3)
@@ -62,7 +62,7 @@ async function fetchActivity(userId: string): Promise<ActivityItem[]> {
   for (const app of recentApps ?? []) {
     const a = app as any
     items.push({
-      id: a.updated_at,
+      id: a.id,
       text: `${capitalize(a.status)} — ${a.jobs.title} at ${a.jobs.company}`,
       time: timeAgo(a.updated_at),
       dotColor: a.status === 'applied' ? '#34d399' : a.status === 'interviewing' ? '#fbbf24' : '#a78bfa',
