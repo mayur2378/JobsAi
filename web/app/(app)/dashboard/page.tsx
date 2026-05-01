@@ -13,7 +13,7 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from('profiles')
-    .select('last_refresh_at, work_preference')
+    .select('last_refresh_at')
     .eq('id', user.id)
     .single()
 

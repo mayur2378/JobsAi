@@ -13,12 +13,15 @@ export function RefreshButton() {
     try {
       await apiFetch('/jobs/refresh', { method: 'POST' })
       setState('done')
-      setMessage('Refresh triggered')
       setTimeout(() => setState('idle'), 3000)
     } catch (err: any) {
       if (err.message?.includes('once per hour')) {
         setState('rate-limited')
         setMessage('Next refresh available in ~1h')
+        setTimeout(() => setState('idle'), 5000)
+      } else if (err.message?.includes('Too many requests') || err.message?.includes('429')) {
+        setState('rate-limited')
+        setMessage('Too many requests — try again shortly')
         setTimeout(() => setState('idle'), 5000)
       } else {
         setState('idle')
