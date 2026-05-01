@@ -236,3 +236,82 @@ describe('DELETE /api/v1/applications/notes/:id', () => {
     expect(res.status).toBe(204)
   })
 })
+
+describe('GET /api/v1/applications/reminders', () => {
+  it('returns 401 without auth', async () => {
+    const res = await request(app).get('/api/v1/applications/reminders?application_id=app-1')
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 200 with reminders array', async () => {
+    authAs('user-1')
+    // Ownership check
+    mockSbFrom.mockReturnValueOnce(makeChain({ data: { id: 'app-1' }, error: null }))
+    // Reminders query
+    mockSbFrom.mockReturnValueOnce(
+      makeChain({
+        data: [{
+          id: 'rem-1', reminder_type: 'interview',
+          remind_at: '2026-05-05T14:00:00Z', message: 'Prep system design', is_sent: false,
+        }],
+        error: null,
+      })
+    )
+    const res = await request(app)
+      .get('/api/v1/applications/reminders?application_id=app-1')
+      .set('Authorization', 'Bearer valid-token')
+    expect(res.status).toBe(200)
+    expect(res.body.data).toHaveLength(1)
+    expect(res.body.data[0].reminder_type).toBe('interview')
+  })
+})
+
+describe('POST /api/v1/applications/reminders', () => {
+  it('returns 401 without auth', async () => {
+    const res = await request(app).post('/api/v1/applications/reminders')
+      .send({ job_application_id: 'app-1', reminder_type: 'interview', remind_at: '2026-05-05T14:00:00Z' })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 400 for missing remind_at', async () => {
+    authAs('user-1')
+    const res = await request(app)
+      .post('/api/v1/applications/reminders')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ job_application_id: 'app-1', reminder_type: 'interview' })
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 201 with created reminder', async () => {
+    authAs('user-1')
+    mockSbFrom.mockReturnValueOnce(makeChain({ data: { id: 'app-1' }, error: null }))
+    mockSbFrom.mockReturnValueOnce(
+      makeChain({
+        data: { id: 'rem-1', reminder_type: 'interview', remind_at: '2026-05-05T14:00:00Z', is_sent: false },
+        error: null,
+      })
+    )
+    const res = await request(app)
+      .post('/api/v1/applications/reminders')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ job_application_id: 'app-1', reminder_type: 'interview', remind_at: '2026-05-05T14:00:00Z', message: 'Prep' })
+    expect(res.status).toBe(201)
+    expect(res.body.data.reminder_type).toBe('interview')
+  })
+})
+
+describe('DELETE /api/v1/applications/reminders/:id', () => {
+  it('returns 401 without auth', async () => {
+    const res = await request(app).delete('/api/v1/applications/reminders/rem-1')
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 204 on success', async () => {
+    authAs('user-1')
+    mockSbFrom.mockReturnValueOnce(makeChain({ data: [{ id: 'rem-1' }], error: null }))
+    const res = await request(app)
+      .delete('/api/v1/applications/reminders/rem-1')
+      .set('Authorization', 'Bearer valid-token')
+    expect(res.status).toBe(204)
+  })
+})
