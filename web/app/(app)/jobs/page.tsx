@@ -64,10 +64,12 @@ export default async function JobsPage({ searchParams }: PageProps) {
         <JobList jobs={jobs} />
       </div>
 
-      {/* Pagination */}
-      <Suspense>
-        <Pagination page={page} totalPages={totalPages} total={response.total} limit={response.limit} />
-      </Suspense>
+      {/* Pagination — hidden when keyword active (keyword filters current page only) */}
+      {!keyword && (
+        <Suspense>
+          <Pagination page={page} totalPages={totalPages} total={response.total} limit={response.limit} />
+        </Suspense>
+      )}
     </div>
   )
 }
