@@ -84,6 +84,92 @@ router.post('/', verifyToken, validate(createAppSchema), async (req, res) => {
   res.status(201).json(success(data))
 })
 
+const noteSchema = z.object({ content: z.string().min(1) })
+
+// Ownership guard helper
+async function ownsApplication(applicationId: string, userId: string): Promise<boolean> {
+  const { data } = await supabaseAdmin
+    .from('job_applications')
+    .select('id')
+    .eq('id', applicationId)
+    .eq('user_id', userId)
+    .single()
+  return !!data
+}
+
+// GET /applications/:id/notes
+router.get('/:id/notes', verifyToken, async (req, res) => {
+  const { userId } = req as AuthRequest
+  if (!(await ownsApplication(req.params.id, userId))) {
+    res.status(404).json(failure('Application not found'))
+    return
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('notes')
+    .select('id, content, created_at, updated_at')
+    .eq('job_application_id', req.params.id)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    res.status(500).json(failure('Failed to fetch notes'))
+    return
+  }
+  res.json(success(data))
+})
+
+// POST /applications/:id/notes
+router.post('/:id/notes', verifyToken, async (req, res) => {
+  const { userId } = req as AuthRequest
+  if (!(await ownsApplication(req.params.id, userId))) {
+    res.status(404).json(failure('Application not found'))
+    return
+  }
+
+  const parsed = noteSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json(failure('Validation error', { fields: parsed.error.flatten().fieldErrors }))
+    return
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from('notes')
+    .insert({
+      user_id: userId,
+      job_application_id: req.params.id,
+      content: parsed.data.content,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    res.status(500).json(failure('Failed to create note'))
+    return
+  }
+  res.status(201).json(success(data))
+})
+
+// DELETE /notes/:noteId  (mounted at /applications so full path is /applications/notes/:noteId)
+router.delete('/notes/:noteId', verifyToken, async (req, res) => {
+  const { userId } = req as AuthRequest
+  const { data, error } = await supabaseAdmin
+    .from('notes')
+    .delete()
+    .eq('id', req.params.noteId)
+    .eq('user_id', userId)
+    .select()
+
+  if (error) {
+    res.status(500).json(failure('Failed to delete note'))
+    return
+  }
+  if (!data || (data as any[]).length === 0) {
+    res.status(404).json(failure('Note not found'))
+    return
+  }
+  res.status(204).send()
+})
+
 // PUT /applications/:id — update status / date fields
 router.put('/:id', verifyToken, validate(updateAppSchema), async (req, res) => {
   const { userId } = req as AuthRequest

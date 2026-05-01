@@ -159,3 +159,80 @@ describe('DELETE /api/v1/applications/:id', () => {
     expect(res.status).toBe(404)
   })
 })
+
+describe('GET /api/v1/applications/:id/notes', () => {
+  it('returns 401 without auth', async () => {
+    const res = await request(app).get('/api/v1/applications/app-1/notes')
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 200 with notes array', async () => {
+    authAs('user-1')
+    // First mock: ownership check
+    mockSbFrom.mockReturnValueOnce(
+      makeChain({ data: { id: 'app-1', user_id: 'user-1' }, error: null })
+    )
+    // Second mock: notes query
+    mockSbFrom.mockReturnValueOnce(
+      makeChain({
+        data: [{ id: 'note-1', content: 'Great interview', created_at: '2026-05-01T00:00:00Z' }],
+        error: null,
+      })
+    )
+    const res = await request(app)
+      .get('/api/v1/applications/app-1/notes')
+      .set('Authorization', 'Bearer valid-token')
+    expect(res.status).toBe(200)
+    expect(res.body.data).toHaveLength(1)
+    expect(res.body.data[0].content).toBe('Great interview')
+  })
+})
+
+describe('POST /api/v1/applications/:id/notes', () => {
+  it('returns 401 without auth', async () => {
+    const res = await request(app).post('/api/v1/applications/app-1/notes').send({ content: 'hi' })
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 400 for empty content', async () => {
+    authAs('user-1')
+    mockSbFrom.mockReturnValueOnce(makeChain({ data: { id: 'app-1', user_id: 'user-1' }, error: null }))
+    const res = await request(app)
+      .post('/api/v1/applications/app-1/notes')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ content: '' })
+    expect(res.status).toBe(400)
+  })
+
+  it('returns 201 with created note', async () => {
+    authAs('user-1')
+    // Ownership check
+    mockSbFrom.mockReturnValueOnce(makeChain({ data: { id: 'app-1', user_id: 'user-1' }, error: null }))
+    // Insert note
+    mockSbFrom.mockReturnValueOnce(
+      makeChain({ data: { id: 'note-1', content: 'Prep system design', created_at: '2026-05-01T00:00:00Z' }, error: null })
+    )
+    const res = await request(app)
+      .post('/api/v1/applications/app-1/notes')
+      .set('Authorization', 'Bearer valid-token')
+      .send({ content: 'Prep system design' })
+    expect(res.status).toBe(201)
+    expect(res.body.data.content).toBe('Prep system design')
+  })
+})
+
+describe('DELETE /api/v1/applications/notes/:id', () => {
+  it('returns 401 without auth', async () => {
+    const res = await request(app).delete('/api/v1/applications/notes/note-1')
+    expect(res.status).toBe(401)
+  })
+
+  it('returns 204 on success', async () => {
+    authAs('user-1')
+    mockSbFrom.mockReturnValueOnce(makeChain({ data: [{ id: 'note-1' }], error: null }))
+    const res = await request(app)
+      .delete('/api/v1/applications/notes/note-1')
+      .set('Authorization', 'Bearer valid-token')
+    expect(res.status).toBe(204)
+  })
+})
