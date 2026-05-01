@@ -34,6 +34,11 @@ async function fetchStats(userId: string) {
       .eq('status', 'saved'),
   ])
 
+  if (strongRes.error) throw new Error(`StatWidgets: ${strongRes.error.message}`)
+  if (totalRes.error) throw new Error(`StatWidgets: ${totalRes.error.message}`)
+  if (appliedRes.error) throw new Error(`StatWidgets: ${appliedRes.error.message}`)
+  if (savedRes.error) throw new Error(`StatWidgets: ${savedRes.error.message}`)
+
   return {
     strong: strongRes.count ?? 0,
     total: totalRes.count ?? 0,
@@ -67,7 +72,7 @@ export async function StatWidgets({ userId }: { userId: string }) {
               background: `linear-gradient(90deg, ${s.accent}, transparent)`,
             }}
           />
-          <div className="font-mono text-xs uppercase tracking-widest mb-2" style={{ color: '#64748b', letterSpacing: '.1em' }}>
+          <div className="font-mono text-xs uppercase tracking-widest mb-2" style={{ color: '#64748b' }}>
             {s.label}
           </div>
           <div className="font-mono font-bold leading-none mb-1" style={{ fontSize: 28, color: s.accent }}>
