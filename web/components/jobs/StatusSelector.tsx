@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { apiFetch } from '@/lib/api'
 
-type AppStatus = 'saved' | 'dismissed' | 'applied' | 'interviewing' | 'offer' | 'rejected'
+export type AppStatus = 'saved' | 'dismissed' | 'applied' | 'interviewing' | 'offer' | 'rejected'
 
 interface StatusSelectorProps {
   jobId: string

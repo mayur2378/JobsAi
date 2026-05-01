@@ -4,12 +4,12 @@ import { ExternalLink } from 'lucide-react'
 import { serverFetch } from '@/lib/api'
 import { MatchPanel } from '@/components/jobs/MatchPanel'
 import { StatusSelector } from '@/components/jobs/StatusSelector'
+import type { AppStatus } from '@/components/jobs/StatusSelector'
 import type { Job } from '@/components/jobs/JobCard'
 
 interface JobDetail extends Job {
   description: string | null
   requirements: string | null
-  extracted_skills: string[]
   skills_matched: string[] | null
   skills_missing: string[] | null
   match_explanation: string | null
@@ -119,7 +119,7 @@ export default async function JobDetailPage({ params }: { params: { id: string }
                 <ExternalLink size={11} />
               </a>
             )}
-            <StatusSelector jobId={job.id} initialStatus={job.application_status as any} />
+            <StatusSelector jobId={job.id} initialStatus={job.application_status as AppStatus | null} />
           </div>
         </div>
       </div>
