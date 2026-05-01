@@ -17,7 +17,7 @@ interface PageProps {
 }
 
 export default async function JobsPage({ searchParams }: PageProps) {
-  const page = Number(searchParams.page ?? 1)
+  const page = Math.max(1, Number(searchParams.page) || 1)
   const min_score = searchParams.min_score as string | undefined
   const remote = searchParams.remote as string | undefined
   const status = searchParams.status as string | undefined
