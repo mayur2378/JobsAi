@@ -4,6 +4,15 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { ScoreRing } from './ScoreRing'
 
+interface RealtimeJobMatch {
+  ai_refined: boolean
+  refined_score: number | null
+  skills_matched: string[] | null
+  skills_missing: string[] | null
+  match_explanation: string | null
+  gaps_to_improve: string[] | null
+}
+
 interface MatchData {
   score: number
   label: string
@@ -73,7 +82,7 @@ export function MatchPanel({ jobId, initial }: MatchPanelProps) {
           filter: `job_id=eq.${jobId}`,
         },
         (payload) => {
-          const updated = payload.new as any
+          const updated = payload.new as RealtimeJobMatch
           if (updated.ai_refined) {
             setData((prev) => ({
               ...prev,
@@ -132,7 +141,7 @@ export function MatchPanel({ jobId, initial }: MatchPanelProps) {
             </div>
             <div className="space-y-2">
               {Object.entries(FACTOR_MAX).map(([key, max]) => {
-                const val = (data.breakdown as any)?.[key] ?? 0
+                const val = data.breakdown ? (data.breakdown as Record<string, number>)[key] ?? 0 : 0
                 const pct = (val / max) * 100
                 return (
                   <div key={key} className="flex items-center gap-2">
