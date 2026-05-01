@@ -33,6 +33,7 @@ export function StatusSelector({ jobId, initialStatus }: StatusSelectorProps) {
   const [saving, setSaving] = useState(false)
 
   async function handleChange(newStatus: AppStatus) {
+    if (newStatus === status) return
     setSaving(true)
     try {
       await apiFetch(`/jobs/${jobId}/status`, {
@@ -40,8 +41,9 @@ export function StatusSelector({ jobId, initialStatus }: StatusSelectorProps) {
         body: JSON.stringify({ status: newStatus }),
       })
       setStatus(newStatus)
-    } catch {
-      // Non-fatal — keep previous status
+    } catch (err) {
+      console.error('StatusSelector: failed to update status', err)
+      // status stays unchanged — user sees no change (non-fatal)
     } finally {
       setSaving(false)
     }
