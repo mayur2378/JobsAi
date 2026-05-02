@@ -36,7 +36,7 @@ export async function parseResume(buffer: Buffer, fileType: 'pdf' | 'docx'): Pro
 
   const message = await anthropic.messages.create({
     model: 'claude-haiku-4-5-20251001',
-    max_tokens: 2048,
+    max_tokens: 4096,
     system:
       'You are a resume parser. Extract structured information from resumes and return valid JSON only. No markdown, no code blocks, no explanation — just the raw JSON object.',
     messages: [
