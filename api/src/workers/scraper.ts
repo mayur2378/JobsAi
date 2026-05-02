@@ -85,8 +85,8 @@ async function fetchJSearchPage(scrapeQuery: ScrapeQuery): Promise<unknown[]> {
   const params = new URLSearchParams({
     query: scrapeQuery.query,
     page: '1',
-    num_pages: '1',
-    date_posted: '3days',
+    num_pages: '3',
+    date_posted: 'month',
     ...(scrapeQuery.remoteOnly ? { remote_jobs_only: 'true' } : {}),
   })
 
@@ -98,13 +98,16 @@ async function fetchJSearchPage(scrapeQuery: ScrapeQuery): Promise<unknown[]> {
   })
 
   if (!res.ok) {
-    console.error(`[scraper] JSearch error ${res.status} for query: ${scrapeQuery.query}`)
+    const body = await res.text().catch(() => '')
+    console.error(`[scraper] JSearch error ${res.status} for query: ${scrapeQuery.query}`, body.slice(0, 200))
     return []
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const json = await res.json() as any
-  return Array.isArray(json.data) ? json.data : []
+  const results = Array.isArray(json.data) ? json.data : []
+  console.log(`[scraper] JSearch "${scrapeQuery.query}": ${results.length} results`)
+  return results
 }
 
 export async function scrapeJobsForUser(
