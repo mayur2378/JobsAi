@@ -20,6 +20,7 @@ function mockFrom(overrides: Record<string, jest.Mock> = {}) {
     select: jest.fn().mockReturnThis(),
     eq: jest.fn().mockReturnThis(),
     update: jest.fn().mockReturnThis(),
+    upsert: jest.fn().mockReturnThis(),
     single: jest.fn(),
     ...overrides,
   }
@@ -126,7 +127,7 @@ describe('PUT /api/v1/profile — error path', () => {
       .send({ full_name: 'Bob' })
 
     expect(res.status).toBe(500)
-    expect(res.body.error).toBe('Failed to update profile')
+    expect(res.body.error).toBe('db error')
   })
 })
 

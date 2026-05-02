@@ -23,12 +23,12 @@ interface MatchData {
   explanation: string | null
   gaps: string[]
   breakdown: {
-    skills: number
     title: number
-    location: number
+    priority_skills: number
+    skills: number
     experience: number
     keywords: number
-    salary: number
+    location: number
   } | null
 }
 
@@ -38,30 +38,30 @@ interface MatchPanelProps {
 }
 
 const FACTOR_MAX: Record<string, number> = {
-  skills: 35,
-  title: 20,
-  location: 15,
-  experience: 15,
-  keywords: 10,
-  salary: 5,
+  title: 40,
+  priority_skills: 30,
+  skills: 10,
+  experience: 10,
+  keywords: 5,
+  location: 5,
 }
 
 const FACTOR_LABELS: Record<string, string> = {
-  skills: 'Skills',
   title: 'Title',
-  location: 'Location',
+  priority_skills: 'Priority Skills',
+  skills: 'Skills',
   experience: 'Experience',
   keywords: 'Keywords',
-  salary: 'Salary',
+  location: 'Location',
 }
 
 const FACTOR_COLORS: Record<string, string> = {
-  skills: '#34d399',
   title: '#a78bfa',
-  location: '#8b5cf6',
+  priority_skills: '#f472b6',
+  skills: '#34d399',
   experience: '#fbbf24',
-  keywords: '#a78bfa',
-  salary: '#34d399',
+  keywords: '#60a5fa',
+  location: '#8b5cf6',
 }
 
 export function MatchPanel({ jobId, initial }: MatchPanelProps) {

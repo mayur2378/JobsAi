@@ -1,10 +1,10 @@
 import {
   scoreSkills,
+  scorePrioritySkills,
   scoreTitle,
   scoreLocation,
   scoreYearsExp,
   scoreKeywords,
-  scoreSalary,
   computePhase1,
 } from '../src/workers/matchEngine'
 
@@ -13,17 +13,36 @@ describe('scoreSkills', () => {
     expect(scoreSkills([], ['React', 'TypeScript'])).toBe(0)
   })
 
-  it('returns 35 when all job skills match user skills', () => {
-    expect(scoreSkills(['react', 'typescript'], ['react', 'typescript', 'node.js'])).toBe(35)
+  it('returns 10 when all job skills match user skills', () => {
+    expect(scoreSkills(['react', 'typescript'], ['react', 'typescript', 'node.js'])).toBe(10)
   })
 
   it('returns proportional score for partial overlap', () => {
     const score = scoreSkills(['react', 'vue'], ['react', 'node.js'])
-    expect(score).toBe(18) // Math.round(0.5 * 35) = 18
+    expect(score).toBe(5) // Math.round(0.5 * 10) = 5
   })
 
   it('is case insensitive', () => {
-    expect(scoreSkills(['React'], ['react'])).toBe(35)
+    expect(scoreSkills(['React'], ['react'])).toBe(10)
+  })
+})
+
+describe('scorePrioritySkills', () => {
+  it('returns 0 when user has no priority skills', () => {
+    expect(scorePrioritySkills('React and TypeScript', [], [])).toBe(0)
+  })
+
+  it('returns 30 when all priority skills found in job text', () => {
+    expect(scorePrioritySkills('React and TypeScript required', [], ['React', 'TypeScript'])).toBe(30)
+  })
+
+  it('returns proportional score for partial match', () => {
+    const score = scorePrioritySkills('We use React', [], ['React', 'TypeScript'])
+    expect(score).toBe(15) // Math.round(0.5 * 30) = 15
+  })
+
+  it('matches via extracted_skills array', () => {
+    expect(scorePrioritySkills('', ['react'], ['React'])).toBe(30)
   })
 })
 
@@ -32,36 +51,36 @@ describe('scoreTitle', () => {
     expect(scoreTitle('Senior Frontend Engineer', [])).toBe(0)
   })
 
-  it('returns 20 when job title exactly matches desired title', () => {
-    expect(scoreTitle('Senior Frontend Engineer', ['Senior Frontend Engineer'])).toBe(20)
+  it('returns 40 when job title exactly matches desired title', () => {
+    expect(scoreTitle('Senior Frontend Engineer', ['Senior Frontend Engineer'])).toBe(40)
   })
 
   it('returns partial score for partial word overlap', () => {
     const score = scoreTitle('Senior Frontend Engineer', ['Frontend Developer'])
-    // "frontend" matches out of ["frontend", "developer"] = 1/2 = 0.5 * 20 = 10
-    expect(score).toBe(10)
+    // "frontend" matches out of ["frontend", "developer"] = 1/2 = 0.5 * 40 = 20
+    expect(score).toBe(20)
   })
 })
 
 describe('scoreLocation', () => {
-  it('returns 15 when user is remote-only and job is remote', () => {
-    expect(scoreLocation('Austin, TX', true, 'Austin, TX', 'remote', [])).toBe(15)
+  it('returns 5 when user is remote-only and job is remote', () => {
+    expect(scoreLocation('Austin, TX', true, 'Austin, TX', 'remote', [])).toBe(5)
   })
 
   it('returns 0 when user is remote-only and job is not remote', () => {
     expect(scoreLocation('Austin, TX', false, 'Austin, TX', 'remote', [])).toBe(0)
   })
 
-  it('returns 8 when job is remote and user has hybrid preference', () => {
-    expect(scoreLocation('Remote', true, null, 'hybrid', [])).toBe(8)
+  it('returns 3 when job is remote and user has hybrid preference', () => {
+    expect(scoreLocation('Remote', true, null, 'hybrid', [])).toBe(3)
   })
 
-  it('returns 15 when job location matches preferred location', () => {
-    expect(scoreLocation('Austin, TX', false, 'Seattle', null, ['Austin'])).toBe(15)
+  it('returns 5 when job location matches preferred location', () => {
+    expect(scoreLocation('Austin, TX', false, 'Seattle', null, ['Austin'])).toBe(5)
   })
 
-  it('returns 15 when job location matches user location (no preferred_locations)', () => {
-    expect(scoreLocation('Austin, TX', false, 'Austin', null, [])).toBe(15)
+  it('returns 5 when job location matches user location (no preferred_locations)', () => {
+    expect(scoreLocation('Austin, TX', false, 'Austin', null, [])).toBe(5)
   })
 
   it('returns 0 when location mismatches and job is not remote', () => {
@@ -74,16 +93,16 @@ describe('scoreYearsExp', () => {
     expect(scoreYearsExp('Requires 3+ years experience', null)).toBe(0)
   })
 
-  it('returns 15 when user experience is within required range', () => {
-    expect(scoreYearsExp('Requires 3-5 years of experience', 4)).toBe(15)
+  it('returns 10 when user experience is within required range', () => {
+    expect(scoreYearsExp('Requires 3-5 years of experience', 4)).toBe(10)
   })
 
-  it('returns 8 when user experience is within 2 years of requirement', () => {
-    expect(scoreYearsExp('Requires 5+ years experience', 3)).toBe(8)
+  it('returns 5 when user experience is within 2 years of requirement', () => {
+    expect(scoreYearsExp('Requires 5+ years experience', 3)).toBe(5)
   })
 
-  it('returns 7 partial credit when no experience requirement found', () => {
-    expect(scoreYearsExp('Great opportunity at a fast-growing startup', 5)).toBe(7)
+  it('returns 5 partial credit when no experience requirement found', () => {
+    expect(scoreYearsExp('Great opportunity at a fast-growing startup', 5)).toBe(5)
   })
 })
 
@@ -92,36 +111,18 @@ describe('scoreKeywords', () => {
     expect(scoreKeywords('We use React and TypeScript', [])).toBe(0)
   })
 
-  it('returns 10 when all user keywords appear in job description', () => {
-    expect(scoreKeywords('We use React and TypeScript daily', ['react', 'typescript'])).toBe(10)
+  it('returns 5 when all user keywords appear in job description', () => {
+    expect(scoreKeywords('We use React and TypeScript daily', ['react', 'typescript'])).toBe(5)
   })
 
   it('returns proportional score for partial match', () => {
     const score = scoreKeywords('We use React in our stack', ['react', 'typescript'])
-    expect(score).toBe(5) // 1 of 2 = 0.5 * 10 = 5
-  })
-})
-
-describe('scoreSalary', () => {
-  it('returns 2 when user has no salary preference', () => {
-    expect(scoreSalary(100000, 130000, null, null)).toBe(2)
-  })
-
-  it('returns 2 when job does not disclose salary', () => {
-    expect(scoreSalary(null, null, 80000, 120000)).toBe(2)
-  })
-
-  it('returns 5 when ranges fully overlap', () => {
-    expect(scoreSalary(90000, 120000, 80000, 130000)).toBe(5)
-  })
-
-  it('returns 0 when salary ranges do not overlap', () => {
-    expect(scoreSalary(50000, 70000, 100000, 130000)).toBe(0)
+    expect(score).toBe(3) // Math.round(1/2 * 5) = 3
   })
 })
 
 describe('computePhase1', () => {
-  const userProfile = {
+  const baseProfile = {
     desired_titles: ['Frontend Engineer'],
     preferred_locations: ['Austin'],
     work_preference: null as null,
@@ -129,6 +130,7 @@ describe('computePhase1', () => {
     salary_min: 80000,
     salary_max: 130000,
     years_experience: 5,
+    priority_skills: [] as string[],
   }
   const userSkills = ['react', 'typescript', 'node.js']
   const keywords = ['react', 'typescript']
@@ -144,15 +146,17 @@ describe('computePhase1', () => {
       salary_max: 125000,
       extracted_skills: ['react', 'typescript'],
     }
-    const result = computePhase1(job, userProfile, userSkills, keywords)
+    const result = computePhase1(job, baseProfile, userSkills, keywords)
     expect(result.score).toBeGreaterThan(0)
     expect(result.score).toBeLessThanOrEqual(100)
     expect(['excellent', 'strong', 'good', 'low']).toContain(result.label)
     expect(result.breakdown).toHaveProperty('skills')
     expect(result.breakdown).toHaveProperty('title')
+    expect(result.breakdown).toHaveProperty('priority_skills')
   })
 
-  it('assigns excellent label for high score', () => {
+  it('assigns excellent label when priority skills boost score to 80+', () => {
+    const profile = { ...baseProfile, priority_skills: ['react', 'typescript'] }
     const job = {
       title: 'Frontend Engineer',
       location: 'Austin, TX',
@@ -163,7 +167,8 @@ describe('computePhase1', () => {
       salary_max: 120000,
       extracted_skills: ['react', 'typescript', 'node.js'],
     }
-    const result = computePhase1(job, userProfile, userSkills, keywords)
+    const result = computePhase1(job, profile, userSkills, keywords)
+    // title=40 + priority_skills=30 + skills=10 + exp=10 + keywords=5 + location=5 = 100
     expect(result.score).toBeGreaterThanOrEqual(80)
     expect(result.label).toBe('excellent')
   })
@@ -179,7 +184,7 @@ describe('computePhase1', () => {
       salary_max: 60000,
       extracted_skills: ['kubernetes', 'terraform', 'ansible'],
     }
-    const result = computePhase1(job, userProfile, [], [])
+    const result = computePhase1(job, baseProfile, [], [])
     expect(result.label).toBe('low')
   })
 })

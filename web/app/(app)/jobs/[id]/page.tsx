@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { ExternalLink } from 'lucide-react'
 import { serverFetch } from '@/lib/server-api'
 import { MatchPanel } from '@/components/jobs/MatchPanel'
+import { JobDescription } from '@/components/jobs/JobDescription'
 import { StatusSelector } from '@/components/jobs/StatusSelector'
 import type { AppStatus } from '@/components/jobs/StatusSelector'
 import type { Job } from '@/components/jobs/JobCard'
@@ -15,12 +16,12 @@ interface JobDetail extends Job {
   match_explanation: string | null
   gaps_to_improve: string[] | null
   match_breakdown: {
-    skills: number
     title: number
-    location: number
+    priority_skills: number
+    skills: number
     experience: number
     keywords: number
-    salary: number
+    location: number
   } | null
 }
 
@@ -130,31 +131,11 @@ export default async function JobDetailPage({ params }: { params: { id: string }
         {/* Left: job content */}
         <div className="space-y-4">
           {job.description && (
-            <div
-              className="rounded-xl p-5"
-              style={{ background: '#0f0c1a', border: '1px solid rgba(139,92,246,0.15)' }}
-            >
-              <div className="font-mono text-xs uppercase tracking-widest mb-3" style={{ color: '#64748b', fontSize: 9 }}>
-                Description
-              </div>
-              <p className="text-xs leading-relaxed" style={{ color: '#94a3b8', lineHeight: 1.75 }}>
-                {job.description}
-              </p>
-            </div>
+            <JobDescription text={job.description} label="Description" />
           )}
 
           {job.requirements && (
-            <div
-              className="rounded-xl p-5"
-              style={{ background: '#0f0c1a', border: '1px solid rgba(139,92,246,0.15)' }}
-            >
-              <div className="font-mono text-xs uppercase tracking-widest mb-3" style={{ color: '#64748b', fontSize: 9 }}>
-                Requirements
-              </div>
-              <p className="text-xs leading-relaxed" style={{ color: '#94a3b8', lineHeight: 1.75 }}>
-                {job.requirements}
-              </p>
-            </div>
+            <JobDescription text={job.requirements} label="Requirements" />
           )}
 
           {/* Skills analysis */}

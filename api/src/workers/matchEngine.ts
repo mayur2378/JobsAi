@@ -13,6 +13,7 @@ export interface UserMatchProfile {
   salary_min: number | null
   salary_max: number | null
   years_experience: number | null
+  priority_skills: string[]
 }
 
 export interface JobForScoring {
@@ -30,12 +31,12 @@ export interface Phase1Result {
   score: number
   label: 'excellent' | 'strong' | 'good' | 'low'
   breakdown: {
-    skills: number
+    priority_skills: number
     title: number
-    location: number
+    skills: number
     experience: number
     keywords: number
-    salary: number
+    location: number
   }
 }
 
@@ -47,7 +48,23 @@ export function scoreSkills(jobSkills: string[], userSkills: string[]): number {
   if (jobSkills.length === 0) return 0
   const userSet = new Set(userSkills.map((s) => s.toLowerCase()))
   const matches = jobSkills.filter((s) => userSet.has(s.toLowerCase()))
-  return Math.round((matches.length / jobSkills.length) * 35)
+  return Math.round((matches.length / jobSkills.length) * 10)
+}
+
+export function scorePrioritySkills(
+  jobText: string,
+  jobSkills: string[],
+  prioritySkills: string[]
+): number {
+  if (prioritySkills.length === 0) return 0
+  const text = jobText.toLowerCase()
+  const jobSkillSet = new Set(jobSkills.map((s) => s.toLowerCase()))
+  let matches = 0
+  for (const skill of prioritySkills) {
+    const lower = skill.toLowerCase()
+    if (text.includes(lower) || jobSkillSet.has(lower)) matches++
+  }
+  return Math.round((matches / prioritySkills.length) * 30)
 }
 
 export function scoreTitle(jobTitle: string, desiredTitles: string[]): number {
@@ -60,7 +77,7 @@ export function scoreTitle(jobTitle: string, desiredTitles: string[]): number {
     const matchCount = desiredWords.filter((w) => jobWords.has(w)).length
     best = Math.max(best, matchCount / desiredWords.length)
   }
-  return Math.round(best * 20)
+  return Math.round(best * 40)
 }
 
 export function scoreLocation(
@@ -70,8 +87,8 @@ export function scoreLocation(
   workPreference: string | null,
   preferredLocations: string[]
 ): number {
-  if (workPreference === 'remote') return jobIsRemote ? 15 : 0
-  if (jobIsRemote) return workPreference === 'hybrid' || !workPreference ? 8 : 0
+  if (workPreference === 'remote') return jobIsRemote ? 5 : 0
+  if (jobIsRemote) return workPreference === 'hybrid' || !workPreference ? 3 : 0
 
   const jobLoc = (jobLocation ?? '').toLowerCase()
   const preferred =
@@ -83,7 +100,7 @@ export function scoreLocation(
 
   if (preferred.length === 0) return 0
   for (const pref of preferred) {
-    if (jobLoc.includes(pref) || pref.includes(jobLoc)) return 15
+    if (jobLoc.includes(pref) || pref.includes(jobLoc)) return 5
   }
   return 0
 }
@@ -93,41 +110,19 @@ export function scoreYearsExp(jobText: string, userYearsExp: number | null): num
   const match = jobText.match(
     /(\d+)\+?\s*(?:[-–to]+\s*(\d+)\s*)?years?\s+(?:of\s+)?(?:\w+\s+)?experience/i
   )
-  if (!match) return 7
+  if (!match) return 5
   const min = parseInt(match[1])
   const max = match[2] ? parseInt(match[2]) : min
-  if (userYearsExp >= min && userYearsExp <= max + 2) return 15
-  if (Math.abs(userYearsExp - min) <= 2) return 8
-  return 2
+  if (userYearsExp >= min && userYearsExp <= max + 2) return 10
+  if (Math.abs(userYearsExp - min) <= 2) return 5
+  return 1
 }
 
 export function scoreKeywords(jobDescription: string, keywords: string[]): number {
   if (keywords.length === 0) return 0
   const desc = (jobDescription ?? '').toLowerCase()
   const matches = keywords.filter((kw) => desc.includes(kw.toLowerCase()))
-  return Math.round((matches.length / keywords.length) * 10)
-}
-
-export function scoreSalary(
-  jobSalaryMin: number | null,
-  jobSalaryMax: number | null,
-  userSalaryMin: number | null,
-  userSalaryMax: number | null
-): number {
-  if (userSalaryMin === null && userSalaryMax === null) return 2
-  if (jobSalaryMin === null && jobSalaryMax === null) return 2
-
-  const jMin = jobSalaryMin ?? 0
-  const jMax = jobSalaryMax ?? jMin
-  const uMin = userSalaryMin ?? 0
-  const uMax = userSalaryMax ?? uMin
-
-  const overlapStart = Math.max(jMin, uMin)
-  const overlapEnd = Math.min(jMax, uMax)
-
-  if (overlapEnd < overlapStart) return 0
-  const relevantRange = Math.max(Math.min(jMax - jMin, uMax - uMin), 1)
-  return Math.round(Math.min((overlapEnd - overlapStart) / relevantRange, 1) * 5)
+  return Math.round((matches.length / keywords.length) * 5)
 }
 
 export function computePhase1(
@@ -138,8 +133,11 @@ export function computePhase1(
 ): Phase1Result {
   const jobText = `${job.description ?? ''} ${job.requirements ?? ''}`
 
-  const skills = scoreSkills(job.extracted_skills, userSkillNames)
   const title = scoreTitle(job.title, profile.desired_titles)
+  const priority_skills = scorePrioritySkills(jobText, job.extracted_skills, profile.priority_skills)
+  const skills = scoreSkills(job.extracted_skills, userSkillNames)
+  const experience = scoreYearsExp(jobText, profile.years_experience)
+  const keywords = scoreKeywords(jobText, resumeKeywords)
   const location = scoreLocation(
     job.location,
     job.is_remote,
@@ -147,11 +145,8 @@ export function computePhase1(
     profile.work_preference,
     profile.preferred_locations
   )
-  const experience = scoreYearsExp(jobText, profile.years_experience)
-  const keywords = scoreKeywords(jobText, resumeKeywords)
-  const salary = scoreSalary(job.salary_min, job.salary_max, profile.salary_min, profile.salary_max)
 
-  const score = Math.min(skills + title + location + experience + keywords + salary, 100)
+  const score = Math.min(title + priority_skills + skills + experience + keywords + location, 100)
 
   let label: Phase1Result['label']
   if (score >= 80) label = 'excellent'
@@ -159,7 +154,7 @@ export function computePhase1(
   else if (score >= 40) label = 'good'
   else label = 'low'
 
-  return { score, label, breakdown: { skills, title, location, experience, keywords, salary } }
+  return { score, label, breakdown: { title, priority_skills, skills, experience, keywords, location } }
 }
 
 // ─── Phase 2 — Claude refinement ─────────────────────────────────────────────
@@ -267,6 +262,7 @@ interface ActiveUser {
   salary_min: number | null
   salary_max: number | null
   years_experience: number | null
+  priority_skills: string[]
 }
 
 export async function runPipelineForJobs(
@@ -289,8 +285,9 @@ export async function runPipelineForJobs(
       .single(),
   ])
 
-  const profile = profileResult.data as ActiveUser | null
-  if (!profile) return
+  const profileRaw = profileResult.data as (ActiveUser & { priority_skills?: string[] }) | null
+  if (!profileRaw) return
+  const profile: ActiveUser = { ...profileRaw, priority_skills: profileRaw.priority_skills ?? [] }
 
   const userSkills: string[] = (skillsResult.data ?? []).map((s: { name: string }) => s.name)
   const parsedResume = resumeResult.data?.parsed_data ?? null
