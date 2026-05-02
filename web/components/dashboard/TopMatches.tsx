@@ -21,7 +21,7 @@ async function fetchTopMatches(userId: string): Promise<Job[]> {
   if (!data) return []
 
   return data.map((m) => ({
-    ...(m.jobs as Record<string, unknown>),
+    ...(m.jobs as unknown as Record<string, unknown>),
     match_score: m.match_score,
     match_label: m.match_label,
     refined_score: m.refined_score,
