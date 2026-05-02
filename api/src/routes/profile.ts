@@ -45,7 +45,8 @@ router.put('/', verifyToken, validate(updateProfileSchema), async (req, res) => 
     .single()
 
   if (error) {
-    res.status(500).json(failure('Failed to update profile'))
+    console.error('[profile PUT] Supabase error:', error.message, error.code)
+    res.status(500).json(failure(error.message ?? 'Failed to update profile'))
     return
   }
   res.json(success(data))
