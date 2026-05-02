@@ -1,8 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
-// pdf-parse v2 may export the function as .default in CJS interop
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const pdfParseMod = require('pdf-parse')
-const pdfParse = (pdfParseMod.default ?? pdfParseMod) as (buffer: Buffer) => Promise<{ text: string }>
+const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
 import mammoth from 'mammoth'
 import { supabaseAdmin } from '../config/supabase'
 import { env } from '../config/env'
