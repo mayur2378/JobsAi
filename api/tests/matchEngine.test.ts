@@ -9,21 +9,27 @@ import {
 } from '../src/workers/matchEngine'
 
 describe('scoreSkills', () => {
-  it('returns 0 when job has no extracted skills', () => {
-    expect(scoreSkills([], ['React', 'TypeScript'])).toBe(0)
+  it('returns 0 when user has no skills', () => {
+    expect(scoreSkills(['react', 'typescript'], '', [])).toBe(0)
   })
 
-  it('returns 10 when all job skills match user skills', () => {
-    expect(scoreSkills(['react', 'typescript'], ['react', 'typescript', 'node.js'])).toBe(10)
+  it('finds skills in extracted_skills array', () => {
+    expect(scoreSkills(['react', 'typescript'], '', ['react', 'typescript'])).toBe(10)
+  })
+
+  it('finds skills in job text when extracted_skills is empty', () => {
+    // Even with no extracted skills, matching via text should work
+    const score = scoreSkills([], 'We use React and TypeScript daily', ['react', 'typescript'])
+    expect(score).toBe(10)
   })
 
   it('returns proportional score for partial overlap', () => {
-    const score = scoreSkills(['react', 'vue'], ['react', 'node.js'])
-    expect(score).toBe(5) // Math.round(0.5 * 10) = 5
+    const score = scoreSkills([], 'We use React in our stack', ['react', 'typescript'])
+    expect(score).toBe(5) // Math.round(1/2 * 10) = 5
   })
 
   it('is case insensitive', () => {
-    expect(scoreSkills(['React'], ['react'])).toBe(10)
+    expect(scoreSkills(['React'], '', ['react'])).toBe(10)
   })
 })
 
@@ -55,9 +61,21 @@ describe('scoreTitle', () => {
     expect(scoreTitle('Senior Frontend Engineer', ['Senior Frontend Engineer'])).toBe(40)
   })
 
-  it('returns partial score for partial word overlap', () => {
-    const score = scoreTitle('Senior Frontend Engineer', ['Frontend Developer'])
-    // "frontend" matches out of ["frontend", "developer"] = 1/2 = 0.5 * 40 = 20
+  it('matches across seniority levels — MuleSoft Developer matches MuleSoft Integration Director', () => {
+    // "Developer" and "Director" are both stripped; "mulesoft" matches fully
+    const score = scoreTitle('MuleSoft Integration Director', ['MuleSoft Developer'])
+    expect(score).toBe(40)
+  })
+
+  it('matches domain words when seniority differs', () => {
+    // "Senior" stripped from both; "frontend" and "engineer" match
+    const score = scoreTitle('Senior Frontend Engineer', ['Junior Frontend Engineer'])
+    expect(score).toBe(40)
+  })
+
+  it('returns partial score for partial domain overlap', () => {
+    const score = scoreTitle('Frontend Engineer', ['Backend Engineer'])
+    // core: "frontend","engineer" vs "backend","engineer" — "engineer" matches = 1/2 = 20
     expect(score).toBe(20)
   })
 })
@@ -97,7 +115,13 @@ describe('scoreYearsExp', () => {
     expect(scoreYearsExp('Requires 3-5 years of experience', 4)).toBe(10)
   })
 
-  it('returns 5 when user experience is within 2 years of requirement', () => {
+  it('returns 10 for open-ended requirement when user meets minimum', () => {
+    // "10+ years" should score full for a user with 15 years, not fail the old max+2 check
+    expect(scoreYearsExp('Requires 10+ years experience', 15)).toBe(10)
+    expect(scoreYearsExp('Requires 5+ years experience', 5)).toBe(10)
+  })
+
+  it('returns 5 when user is within 2 years below open-ended minimum', () => {
     expect(scoreYearsExp('Requires 5+ years experience', 3)).toBe(5)
   })
 

@@ -44,11 +44,40 @@ export interface Phase1Result {
 
 // ─── Phase 1 — pure scoring functions ────────────────────────────────────────
 
-export function scoreSkills(jobSkills: string[], userSkills: string[]): number {
-  if (jobSkills.length === 0) return 0
-  const userSet = new Set(userSkills.map((s) => s.toLowerCase()))
-  const matches = jobSkills.filter((s) => userSet.has(s.toLowerCase()))
-  return Math.round((matches.length / jobSkills.length) * 10)
+// Words that describe seniority/employment type but not the role domain.
+// Stripping these before title comparison makes "MuleSoft Developer" match
+// "MuleSoft Integration Director" by their shared domain words instead of penalising
+// for the different level word.
+// Generic job-function words that appear in titles but don't identify domain or technology.
+// Stripping these before comparison lets "MuleSoft Developer" match "MuleSoft Integration
+// Director" by their shared technology word rather than failing on Developer vs Director.
+const SENIORITY_WORDS = new Set([
+  // Levels / grades
+  'senior', 'sr', 'junior', 'jr', 'lead', 'principal', 'staff', 'associate',
+  'director', 'manager', 'head', 'vp', 'vice', 'president', 'chief', 'officer',
+  'executive', 'intern', 'entry', 'mid', 'contract', 'contractor', 'consultant',
+  'remote', 'hybrid', 'part', 'full', 'time', 'i', 'ii', 'iii', 'iv', 'v',
+  // Generic role nouns — the domain/tech word is what matters
+  'developer', 'engineer', 'programmer', 'analyst', 'specialist', 'technician',
+  'administrator', 'expert', 'professional', 'generalist',
+])
+
+function coreWords(title: string): string[] {
+  return title.toLowerCase().split(/\W+/).filter((w) => w.length > 1 && !SENIORITY_WORDS.has(w))
+}
+
+export function scoreSkills(jobSkills: string[], jobText: string, userSkills: string[]): number {
+  if (userSkills.length === 0) return 0
+  const textLower = jobText.toLowerCase()
+  const jobSkillSet = new Set(jobSkills.map((s) => s.toLowerCase()))
+  let matches = 0
+  for (const skill of userSkills) {
+    const lower = skill.toLowerCase()
+    if (jobSkillSet.has(lower) || textLower.includes(lower)) matches++
+  }
+  // Cap denominator at 15 so having 50 skills doesn't dilute the score
+  const cap = Math.min(userSkills.length, 15)
+  return Math.round((Math.min(matches, cap) / cap) * 10)
 }
 
 export function scorePrioritySkills(
@@ -69,13 +98,25 @@ export function scorePrioritySkills(
 
 export function scoreTitle(jobTitle: string, desiredTitles: string[]): number {
   if (desiredTitles.length === 0) return 0
-  const jobWords = new Set(jobTitle.toLowerCase().split(/\W+/).filter(Boolean))
+
+  const jobCore = new Set(coreWords(jobTitle))
+  const jobAllWords = new Set(jobTitle.toLowerCase().split(/\W+/).filter(Boolean))
+
   let best = 0
   for (const desired of desiredTitles) {
-    const desiredWords = desired.toLowerCase().split(/\W+/).filter(Boolean)
-    if (desiredWords.length === 0) continue
-    const matchCount = desiredWords.filter((w) => jobWords.has(w)).length
-    best = Math.max(best, matchCount / desiredWords.length)
+    const desiredCore = coreWords(desired)
+    if (desiredCore.length > 0) {
+      // Seniority-stripped comparison — "MuleSoft Developer" vs "MuleSoft Integration Director"
+      // both strip to domain words so "mulesoft" matches fully
+      const coreMatches = desiredCore.filter((w) => jobCore.has(w)).length
+      best = Math.max(best, coreMatches / desiredCore.length)
+    }
+    // Also try raw word overlap as a floor so exact matches always win
+    const rawWords = desired.toLowerCase().split(/\W+/).filter(Boolean)
+    if (rawWords.length > 0) {
+      const rawMatches = rawWords.filter((w) => jobAllWords.has(w)).length
+      best = Math.max(best, rawMatches / rawWords.length)
+    }
   }
   return Math.round(best * 40)
 }
@@ -112,7 +153,14 @@ export function scoreYearsExp(jobText: string, userYearsExp: number | null): num
   )
   if (!match) return 5
   const min = parseInt(match[1])
+  const isOpenEnded = !match[2] // "10+ years" has no stated upper bound
   const max = match[2] ? parseInt(match[2]) : min
+  // Open-ended requirement: any experience at or above minimum is a full match
+  if (isOpenEnded) {
+    if (userYearsExp >= min) return 10
+    if (min - userYearsExp <= 2) return 5
+    return 1
+  }
   if (userYearsExp >= min && userYearsExp <= max + 2) return 10
   if (Math.abs(userYearsExp - min) <= 2) return 5
   return 1
@@ -131,11 +179,13 @@ export function computePhase1(
   userSkillNames: string[],
   resumeKeywords: string[]
 ): Phase1Result {
-  const jobText = `${job.description ?? ''} ${job.requirements ?? ''}`
+  // Include the job title so tech names in the title (e.g. "MuleSoft Integration Director")
+  // are found by priority skills, keywords, and skills text scanning
+  const jobText = `${job.title} ${job.description ?? ''} ${job.requirements ?? ''}`
 
   const title = scoreTitle(job.title, profile.desired_titles)
   const priority_skills = scorePrioritySkills(jobText, job.extracted_skills, profile.priority_skills)
-  const skills = scoreSkills(job.extracted_skills, userSkillNames)
+  const skills = scoreSkills(job.extracted_skills, jobText, userSkillNames)
   const experience = scoreYearsExp(jobText, profile.years_experience)
   const keywords = scoreKeywords(jobText, resumeKeywords)
   const location = scoreLocation(
