@@ -224,7 +224,8 @@ Requirements: ${job.requirements ?? ''}`,
       ],
     })
 
-    const text = response.content[0]?.type === 'text' ? response.content[0].text : ''
+    const raw = response.content[0]?.type === 'text' ? response.content[0].text : ''
+    const text = raw.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
     output = JSON.parse(text) as Phase2Output
   } catch (err) {
     console.error('[matchEngine] Phase 2 failed for match', matchId, err)
