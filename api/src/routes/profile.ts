@@ -18,7 +18,7 @@ const updateProfileSchema = z.object({
   salary_max: z.number().int().min(0).optional(),
   years_experience: z.number().int().min(0).optional(),
   industries: z.array(z.string()).optional(),
-  priority_skills: z.array(z.string()).max(5).optional(),
+  priority_skills: z.array(z.string()).max(10).optional(),
 })
 
 router.get('/', verifyToken, async (req, res) => {

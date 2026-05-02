@@ -26,7 +26,7 @@ interface SkillsManagerProps {
   onReady?: (count: number) => void
 }
 
-const MAX_PRIORITY = 5
+const MAX_PRIORITY = 10
 
 export function SkillsManager({ onReady }: SkillsManagerProps) {
   const [skills, setSkills] = useState<Skill[]>([])

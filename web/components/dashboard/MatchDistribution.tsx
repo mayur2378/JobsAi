@@ -3,34 +3,22 @@ import { createClient } from '@/lib/supabase/server'
 async function fetchDistribution(userId: string) {
   const supabase = await createClient()
 
-  const [excellentRes, strongRes, goodRes] = await Promise.all([
-    supabase
-      .from('job_matches')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .gte('match_score', 80),
-    supabase
-      .from('job_matches')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .gte('match_score', 60)
-      .lt('match_score', 80),
-    supabase
-      .from('job_matches')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
-      .gte('match_score', 40)
-      .lt('match_score', 60),
-  ])
+  const { data, error } = await supabase
+    .from('job_matches')
+    .select('match_score, refined_score, ai_refined')
+    .eq('user_id', userId)
 
-  if (excellentRes.error) throw new Error(`MatchDistribution: ${excellentRes.error.message}`)
-  if (strongRes.error) throw new Error(`MatchDistribution: ${strongRes.error.message}`)
-  if (goodRes.error) throw new Error(`MatchDistribution: ${goodRes.error.message}`)
+  if (error) throw new Error(`MatchDistribution: ${error.message}`)
+
+  // Use refined_score when AI has processed the match, otherwise match_score
+  const scores = (data ?? []).map((m) =>
+    m.ai_refined && m.refined_score != null ? m.refined_score : m.match_score
+  )
 
   return {
-    excellent: excellentRes.count ?? 0,
-    strong: strongRes.count ?? 0,
-    good: goodRes.count ?? 0,
+    excellent: scores.filter((s) => s >= 80).length,
+    strong: scores.filter((s) => s >= 60 && s < 80).length,
+    good: scores.filter((s) => s >= 40 && s < 60).length,
   }
 }
 
