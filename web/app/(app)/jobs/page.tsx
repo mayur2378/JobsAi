@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { serverFetch } from '@/lib/server-api'
 import { JobFilters } from '@/components/jobs/JobFilters'
 import { JobList } from '@/components/jobs/JobList'
@@ -22,6 +23,7 @@ export default async function JobsPage({ searchParams }: PageProps) {
   const remote = searchParams.remote as string | undefined
   const status = searchParams.status as string | undefined
   const keyword = searchParams.keyword as string | undefined
+  const fromDashboard = searchParams.from === 'dashboard'
 
   const params = new URLSearchParams({ page: String(page), limit: '20' })
   if (min_score && min_score !== '0') params.set('min_score', min_score)
@@ -50,6 +52,15 @@ export default async function JobsPage({ searchParams }: PageProps) {
     <div className="flex flex-col h-full -m-6">
       {/* Page heading */}
       <div className="px-6 pt-6 pb-4 flex-shrink-0">
+        {fromDashboard && (
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-1.5 font-mono text-xs mb-3 transition-opacity hover:opacity-70"
+            style={{ color: '#a78bfa' }}
+          >
+            ← Back to Dashboard
+          </Link>
+        )}
         <h1 className="font-mono font-bold text-xl" style={{ color: '#e2e8f0' }}>Jobs</h1>
         <p className="text-xs mt-0.5" style={{ color: '#64748b' }}>AI-matched jobs for your profile</p>
       </div>

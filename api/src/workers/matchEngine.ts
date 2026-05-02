@@ -277,9 +277,19 @@ Requirements: ${job.requirements ?? ''}`,
   }
 
   if (output) {
+    // Promote refined_score into match_score so all DB queries (filters, sorts, counts)
+    // automatically use the AI-refined value instead of the raw Phase 1 score.
+    const refinedLabel =
+      output.refined_score >= 80 ? 'excellent'
+      : output.refined_score >= 60 ? 'strong'
+      : output.refined_score >= 40 ? 'good'
+      : 'low'
+
     const { error: updateErr } = await supabaseAdmin
       .from('job_matches')
       .update({
+        match_score: output.refined_score,
+        match_label: refinedLabel,
         refined_score: output.refined_score,
         skills_matched: output.skills_matched,
         skills_missing: output.skills_missing,
