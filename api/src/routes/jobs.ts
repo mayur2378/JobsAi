@@ -111,7 +111,7 @@ router.post('/refresh', verifyToken, async (req, res) => {
 
   const { data: profile, error } = await supabaseAdmin
     .from('profiles')
-    .select('id, last_refresh_at, desired_titles, preferred_locations, work_preference')
+    .select('id, last_refresh_at, desired_titles, preferred_locations, work_preference, location')
     .eq('id', userId)
     .single()
 
@@ -145,7 +145,8 @@ router.post('/refresh', verifyToken, async (req, res) => {
       const jobIds = await scrapeJobsForUser(
         p.desired_titles ?? [],
         p.preferred_locations ?? [],
-        p.work_preference ?? null
+        p.work_preference ?? null,
+        p.location ?? null
       )
       if (jobIds.length > 0) {
         await runPipelineForJobs(jobIds, userId)

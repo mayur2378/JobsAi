@@ -13,20 +13,29 @@ export interface ScrapeQuery {
 export function buildQueries(
   desiredTitles: string[],
   preferredLocations: string[],
-  workPreference: 'remote' | 'hybrid' | 'onsite' | null
+  workPreference: 'remote' | 'hybrid' | 'onsite' | null,
+  locationFallback?: string | null
 ): ScrapeQuery[] {
   if (desiredTitles.length === 0) return []
 
   const isRemoteOnly = workPreference === 'remote'
 
-  if (preferredLocations.length === 0) {
+  // Fall back to the single location string if preferred_locations array is empty
+  const locations =
+    preferredLocations.length > 0
+      ? preferredLocations
+      : locationFallback
+        ? [locationFallback]
+        : []
+
+  if (locations.length === 0) {
     if (!isRemoteOnly) return []
     return desiredTitles.map((title) => ({ query: title, remoteOnly: true }))
   }
 
   const queries: ScrapeQuery[] = []
   for (const title of desiredTitles) {
-    for (const location of preferredLocations) {
+    for (const location of locations) {
       queries.push({ query: `${title} ${location}`, remoteOnly: isRemoteOnly })
     }
   }
@@ -134,7 +143,7 @@ export async function scrapeJobsForUser(
 export async function scrapeForAllActiveUsers(): Promise<{ userId: string; jobIds: string[] }[]> {
   const { data: profiles, error } = await supabaseAdmin
     .from('profiles')
-    .select('id, desired_titles, preferred_locations, work_preference')
+    .select('id, desired_titles, preferred_locations, work_preference, location')
     .or('desired_titles.neq.{},work_preference.eq.remote')
 
   if (error || !profiles) {
@@ -151,7 +160,7 @@ export async function scrapeForAllActiveUsers(): Promise<{ userId: string; jobId
 
     if (titles.length === 0 && pref !== 'remote') continue
 
-    const jobIds = await scrapeJobsForUser(titles, locations, pref)
+    const jobIds = await scrapeJobsForUser(titles, locations, pref, profile.location)
     results.push({ userId: profile.id, jobIds })
   }
 
