@@ -1,10 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { RefreshCw } from 'lucide-react'
 import { apiFetch } from '@/lib/api'
 
 export function RefreshButton() {
+  const router = useRouter()
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'rate-limited'>('idle')
   const [message, setMessage] = useState('')
 
@@ -13,6 +15,8 @@ export function RefreshButton() {
     try {
       await apiFetch('/jobs/refresh', { method: 'POST' })
       setState('done')
+      // Refresh server components immediately so "Last refreshed" timestamp updates
+      router.refresh()
       setTimeout(() => setState('idle'), 3000)
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : ''

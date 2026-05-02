@@ -5,6 +5,7 @@ import { TopMatches } from '@/components/dashboard/TopMatches'
 import { MatchDistribution } from '@/components/dashboard/MatchDistribution'
 import { RecentActivity } from '@/components/dashboard/RecentActivity'
 import { RefreshButton } from '@/components/dashboard/RefreshButton'
+import { DashboardPoller } from '@/components/dashboard/DashboardPoller'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -33,6 +34,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-5xl">
+      <DashboardPoller userId={user.id} />
       {/* Header */}
       <div className="flex items-start justify-between mb-5">
         <div>

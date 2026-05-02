@@ -16,6 +16,8 @@ export default function OnboardingSkillsPage() {
     setError(null)
     try {
       await apiFetch('/profile/onboarding', { method: 'POST' })
+      // Kick off the first job refresh in the background — don't await it
+      apiFetch('/jobs/refresh', { method: 'POST' }).catch(() => {})
       router.push('/dashboard')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to complete onboarding')
