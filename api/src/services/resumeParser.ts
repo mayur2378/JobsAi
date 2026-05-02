@@ -66,7 +66,8 @@ ${text}`,
   const content = message.content[0]
   if (content.type !== 'text') throw new Error('Unexpected response type from Claude')
 
-  return JSON.parse(content.text) as ParsedResume
+  const raw = content.text.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim()
+  return JSON.parse(raw) as ParsedResume
 }
 
 export async function parseResumeAsync(
