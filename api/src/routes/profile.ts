@@ -39,8 +39,7 @@ router.put('/', verifyToken, validate(updateProfileSchema), async (req, res) => 
   const { userId } = req as AuthRequest
   const { data, error } = await supabaseAdmin
     .from('profiles')
-    .update({ ...req.body, updated_at: new Date().toISOString() })
-    .eq('id', userId)
+    .upsert({ id: userId, ...req.body, updated_at: new Date().toISOString() })
     .select()
     .single()
 

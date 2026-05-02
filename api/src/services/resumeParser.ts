@@ -1,8 +1,8 @@
 import Anthropic from '@anthropic-ai/sdk'
-// pdf-parse v2 ships its own types (class-based), but the test mock and runtime
-// usage require the v1-style callable API. We import via require and type-assert.
+// pdf-parse v2 may export the function as .default in CJS interop
 // eslint-disable-next-line @typescript-eslint/no-var-requires
-const pdfParse = require('pdf-parse') as (buffer: Buffer) => Promise<{ text: string }>
+const pdfParseMod = require('pdf-parse')
+const pdfParse = (pdfParseMod.default ?? pdfParseMod) as (buffer: Buffer) => Promise<{ text: string }>
 import mammoth from 'mammoth'
 import { supabaseAdmin } from '../config/supabase'
 import { env } from '../config/env'
