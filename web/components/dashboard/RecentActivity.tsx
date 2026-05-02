@@ -60,12 +60,12 @@ async function fetchActivity(userId: string): Promise<ActivityItem[]> {
     .limit(3)
 
   for (const app of recentApps ?? []) {
-    const a = app as any
+    const jobs = app.jobs as { title: string; company: string }
     items.push({
-      id: a.id,
-      text: `${capitalize(a.status)} — ${a.jobs.title} at ${a.jobs.company}`,
-      time: timeAgo(a.updated_at),
-      dotColor: a.status === 'applied' ? '#34d399' : a.status === 'interviewing' ? '#fbbf24' : '#a78bfa',
+      id: app.id,
+      text: `${capitalize(app.status)} — ${jobs.title} at ${jobs.company}`,
+      time: timeAgo(app.updated_at),
+      dotColor: app.status === 'applied' ? '#34d399' : app.status === 'interviewing' ? '#fbbf24' : '#a78bfa',
     })
   }
 

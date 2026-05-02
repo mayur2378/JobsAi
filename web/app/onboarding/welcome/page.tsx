@@ -10,7 +10,7 @@ export default function OnboardingWelcomePage() {
       <div>
         <h1 className="text-2xl font-extrabold text-slate-100 mb-2">Welcome to JobTrack AI</h1>
         <p className="text-slate-400 text-sm leading-relaxed">
-          Let's get you set up in under 2 minutes. We'll collect your profile, parse your
+          Let&apos;s get you set up in under 2 minutes. We&apos;ll collect your profile, parse your
           resume with AI, and build your skills list so we can match you to the right jobs.
         </p>
       </div>

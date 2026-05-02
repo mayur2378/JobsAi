@@ -66,7 +66,7 @@ export function ForgotPasswordForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <p className="text-slate-400 text-sm mb-2">
-        Enter your email and we'll send you a reset link.
+        Enter your email and we&apos;ll send you a reset link.
       </p>
       <div>
         <label className="block text-sm font-medium text-slate-300 mb-1">
