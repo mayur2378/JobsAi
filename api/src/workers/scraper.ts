@@ -110,9 +110,10 @@ async function fetchJSearchPage(scrapeQuery: ScrapeQuery): Promise<unknown[]> {
 export async function scrapeJobsForUser(
   desiredTitles: string[],
   preferredLocations: string[],
-  workPreference: 'remote' | 'hybrid' | 'onsite' | null
+  workPreference: 'remote' | 'hybrid' | 'onsite' | null,
+  locationFallback?: string | null
 ): Promise<string[]> {
-  const queries = buildQueries(desiredTitles, preferredLocations, workPreference)
+  const queries = buildQueries(desiredTitles, preferredLocations, workPreference, locationFallback)
   if (queries.length === 0) return []
 
   const newJobIds: string[] = []
