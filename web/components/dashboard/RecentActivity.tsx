@@ -60,7 +60,7 @@ async function fetchActivity(userId: string): Promise<ActivityItem[]> {
     .limit(3)
 
   for (const app of recentApps ?? []) {
-    const jobs = app.jobs as { title: string; company: string }
+    const jobs = (app.jobs as unknown) as { title: string; company: string }
     items.push({
       id: app.id,
       text: `${capitalize(app.status)} — ${jobs.title} at ${jobs.company}`,
