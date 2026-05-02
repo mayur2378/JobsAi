@@ -1,8 +1,11 @@
+[variables]
+NODE_ENV = "production"
+
 [phases.install]
-cmds = ["npm install"]
+cmds = ["npm ci --include=dev"]
 
 [phases.build]
 cmds = ["npm run build"]
 
 [start]
-cmd = "npm start"
+cmd = "node dist/index.js"
