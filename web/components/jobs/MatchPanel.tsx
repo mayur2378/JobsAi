@@ -175,7 +175,7 @@ export function MatchPanel({ jobId, initial }: MatchPanelProps) {
             AI Explanation
           </div>
           <p className="text-xs italic leading-relaxed" style={{ color: '#94a3b8', lineHeight: 1.7 }}>
-            "{data.explanation}"
+            &ldquo;{data.explanation}&rdquo;
           </p>
         </div>
       )}

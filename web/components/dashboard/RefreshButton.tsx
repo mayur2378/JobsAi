@@ -14,8 +14,8 @@ export function RefreshButton() {
       await apiFetch('/jobs/refresh', { method: 'POST' })
       setState('done')
       setTimeout(() => setState('idle'), 3000)
-    } catch (err: any) {
-      if (err.message?.includes('once per hour')) {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message?.includes('once per hour')) {
         setState('rate-limited')
         setMessage('Next refresh available in ~1h')
         setTimeout(() => setState('idle'), 5000)

@@ -25,9 +25,6 @@ interface ReminderFormProps {
   applicationId: string
 }
 
-function toDatetimeLocal(iso: string): string {
-  return iso.slice(0, 16)
-}
 
 export function ReminderForm({ applicationId }: ReminderFormProps) {
   const [reminders, setReminders] = useState<Reminder[]>([])

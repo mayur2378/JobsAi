@@ -73,9 +73,9 @@ export function ProfileForm({
     handleSubmit,
     control,
     formState: { errors },
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } = useForm<FormData>({
-    resolver: zodResolver(profileSchema) as any,
+    // zodResolver type param doesn't align perfectly with react-hook-form's generic resolver type
+    resolver: zodResolver(profileSchema) as ReturnType<typeof zodResolver>,
     defaultValues: defaultValues ?? {},
   })
 
