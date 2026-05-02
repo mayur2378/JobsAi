@@ -15,11 +15,12 @@ export function RefreshButton() {
       setState('done')
       setTimeout(() => setState('idle'), 3000)
     } catch (err: unknown) {
-      if (err instanceof Error && err.message?.includes('once per hour')) {
+      const msg = err instanceof Error ? err.message : ''
+      if (msg.includes('once per hour')) {
         setState('rate-limited')
         setMessage('Next refresh available in ~1h')
         setTimeout(() => setState('idle'), 5000)
-      } else if (err.message?.includes('Too many requests') || err.message?.includes('429')) {
+      } else if (msg.includes('Too many requests') || msg.includes('429')) {
         setState('rate-limited')
         setMessage('Too many requests — try again shortly')
         setTimeout(() => setState('idle'), 5000)
