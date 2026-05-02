@@ -27,7 +27,7 @@ async function fetchTopMatches(userId: string): Promise<Job[]> {
     refined_score: m.refined_score,
     ai_refined: m.ai_refined,
     application_status: null,
-  }))
+  })) as unknown as Job[]
 }
 
 export async function TopMatches({ userId }: { userId: string }) {
