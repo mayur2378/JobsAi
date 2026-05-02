@@ -20,8 +20,8 @@ async function fetchTopMatches(userId: string): Promise<Job[]> {
   if (error) throw new Error(`TopMatches: ${error.message}`)
   if (!data) return []
 
-  return data.map((m: Record<string, unknown>) => ({
-    ...m.jobs,
+  return data.map((m) => ({
+    ...(m.jobs as Record<string, unknown>),
     match_score: m.match_score,
     match_label: m.match_label,
     refined_score: m.refined_score,
