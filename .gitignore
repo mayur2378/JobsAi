@@ -15,3 +15,10 @@ web/node_modules/
 # Build output
 api/dist/
 web/.next/
+
+# Capacitor Android build artifacts
+web/android/app/build/
+web/android/build/
+web/android/.gradle/
+web/android/local.properties
+web/android/app/google-services.json
