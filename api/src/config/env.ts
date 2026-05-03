@@ -10,6 +10,7 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().default(''),
   CORS_ORIGIN: z.string().default('http://localhost:3000'),
   RAPIDAPI_KEY: z.string().default(''),
+  FIREBASE_SERVICE_ACCOUNT_JSON: z.string().default(''),
 })
 
 export type Env = z.infer<typeof envSchema>
