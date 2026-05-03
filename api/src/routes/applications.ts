@@ -5,6 +5,7 @@ import { verifyToken, AuthRequest } from '../middleware/auth'
 import { validate } from '../middleware/validate'
 import { supabaseAdmin } from '../config/supabase'
 import { success, failure } from '../types'
+import { sendPush } from '../services/push'
 
 const router = Router()
 
@@ -280,14 +281,27 @@ router.put('/:id', verifyToken, validate(updateAppSchema), async (req, res) => {
     .update({ ...req.body, updated_at: new Date().toISOString() })
     .eq('id', req.params.id)
     .eq('user_id', userId)
-    .select()
+    .select('id, job_id, status, jobs!inner(title, company)')
     .single()
 
   if (error || !data) {
     res.status(404).json(failure('Application not found'))
     return
   }
+
   res.json(success(data))
+
+  if (req.body.status === 'interviewing') {
+    const job = (data as any).jobs
+    const title = job?.title ?? 'Job'
+    const company = job?.company ?? 'Unknown'
+    sendPush(
+      userId,
+      '📅 Interview stage!',
+      `${title} at ${company} — time to prepare!`,
+      '/tracker'
+    ).catch(() => {})
+  }
 })
 
 // DELETE /applications/:id

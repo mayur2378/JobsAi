@@ -2,6 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import PQueue from 'p-queue'
 import { supabaseAdmin } from '../config/supabase'
 import { env } from '../config/env'
+import { sendPush } from '../services/push'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -228,7 +229,8 @@ interface JobForPhase2 {
 export async function runPhase2ForMatch(
   matchId: string,
   job: JobForPhase2,
-  parsedResume: Record<string, unknown>
+  parsedResume: Record<string, unknown>,
+  userId: string
 ): Promise<void> {
   const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY })
 
@@ -300,6 +302,14 @@ Requirements: ${job.requirements ?? ''}`,
       })
       .eq('id', matchId)
     if (updateErr) console.error('[matchEngine] Failed to save Phase 2 result for match', matchId, updateErr.message)
+    if (output.refined_score >= 60) {
+      sendPush(
+        userId,
+        `New match: ${job.title}`,
+        `${job.company ?? 'Unknown'} — ${output.refined_score}% match`,
+        `/jobs/${job.id}`
+      ).catch(() => {})
+    }
   } else {
     const { error: fallbackErr } = await supabaseAdmin
       .from('job_matches')
@@ -398,6 +408,15 @@ export async function runPipelineForJobs(
       if (matchRow && phase1.score >= 40 && parsedResume) {
         return { matchId: matchRow.id, job: job as JobForPhase2 }
       }
+      // No Phase 2 will run — send notification now if score qualifies
+      if (matchRow && phase1.score >= 60 && !parsedResume) {
+        sendPush(
+          userId,
+          `New match: ${job.title}`,
+          `${job.company ?? 'Unknown'} — ${phase1.score}% match`,
+          `/jobs/${job.id}`
+        ).catch(() => {})
+      }
       return null
     })
   )
@@ -405,7 +424,7 @@ export async function runPipelineForJobs(
   const phase2Jobs = phase2JobsRaw.filter(Boolean) as Array<{ matchId: string; job: JobForPhase2 }>
 
   for (const { matchId, job } of phase2Jobs) {
-    phase2Queue.add(() => runPhase2ForMatch(matchId, job, parsedResume as Record<string, unknown>))
+    phase2Queue.add(() => runPhase2ForMatch(matchId, job, parsedResume as Record<string, unknown>, userId))
   }
 }
 
