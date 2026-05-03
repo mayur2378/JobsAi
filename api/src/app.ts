@@ -10,14 +10,19 @@ export function createApp() {
   const app = express()
 
   app.set('trust proxy', 1)
-  app.use(helmet())
+  app.use(helmet({
+    crossOriginEmbedderPolicy: false, // Allow Supabase auth redirects
+    contentSecurityPolicy: false,     // CSP is set in Next.js for the web layer
+  }))
   app.use(
     cors({
       origin: env.CORS_ORIGIN,
       credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+      allowedHeaders: ['Content-Type', 'Authorization'],
     })
   )
-  app.use(express.json({ limit: '10mb' }))
+  app.use(express.json({ limit: '2mb' }))
   app.use(generalLimiter)
 
   app.use('/api/v1', router)
