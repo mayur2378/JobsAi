@@ -72,7 +72,7 @@ router.post(
         file_type: fileType,
         is_active: false,
       })
-      .select()
+      .select('id, user_id, file_name, file_type, is_active, created_at')
       .single()
 
     if (error) {
@@ -94,7 +94,7 @@ router.get('/', verifyToken, async (req, res) => {
   const { userId } = req as AuthRequest
   const { data: resume, error } = await supabaseAdmin
     .from('resumes')
-    .select('*')
+    .select('id, user_id, file_name, file_url, file_type, is_active, parsed_at, created_at')
     .eq('user_id', userId)
     .eq('is_active', true)
     .order('created_at', { ascending: false })
@@ -113,12 +113,12 @@ router.get('/', verifyToken, async (req, res) => {
   res.json(success({ ...resume, signed_url: urlData?.signedUrl ?? null }))
 })
 
-// GET /resume/status/:id — poll for parse completion
+// GET /resume/status/:id — poll for parse completion (parsed_data intentionally excluded)
 router.get('/status/:id', verifyToken, async (req, res) => {
   const { userId } = req as AuthRequest
   const { data, error } = await supabaseAdmin
     .from('resumes')
-    .select('id, is_active, parsed_data, parsed_at')
+    .select('id, is_active, parsed_at')
     .eq('id', req.params.id)
     .eq('user_id', userId)
     .single()

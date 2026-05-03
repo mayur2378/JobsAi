@@ -22,7 +22,7 @@ router.get('/', verifyToken, async (req, res) => {
   const { userId } = req as AuthRequest
   const { data, error } = await supabaseAdmin
     .from('skills')
-    .select('*')
+    .select('id, user_id, name, source, proficiency, created_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: true })
 

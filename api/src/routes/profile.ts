@@ -25,7 +25,7 @@ router.get('/', verifyToken, async (req, res) => {
   const { userId } = req as AuthRequest
   const { data, error } = await supabaseAdmin
     .from('profiles')
-    .select('*')
+    .select('id, full_name, phone, location, desired_titles, preferred_locations, work_preference, salary_min, salary_max, years_experience, industries, priority_skills, onboarding_completed, last_refresh_at, updated_at')
     .eq('id', userId)
     .single()
 
@@ -41,12 +41,12 @@ router.put('/', verifyToken, validate(updateProfileSchema), async (req, res) => 
   const { data, error } = await supabaseAdmin
     .from('profiles')
     .upsert({ id: userId, ...req.body, updated_at: new Date().toISOString() })
-    .select()
+    .select('id, full_name, phone, location, desired_titles, preferred_locations, work_preference, salary_min, salary_max, years_experience, industries, priority_skills, onboarding_completed, last_refresh_at, updated_at')
     .single()
 
   if (error) {
-    console.error('[profile PUT] Supabase error:', error.message, error.code)
-    res.status(500).json(failure(error.message ?? 'Failed to update profile'))
+    console.error('[profile PUT] Supabase error code:', error.code)
+    res.status(500).json(failure('Failed to update profile'))
     return
   }
   res.json(success(data))
@@ -58,7 +58,7 @@ router.post('/onboarding', verifyToken, async (req, res) => {
     .from('profiles')
     .update({ onboarding_completed: true, updated_at: new Date().toISOString() })
     .eq('id', userId)
-    .select()
+    .select('id, onboarding_completed')
     .single()
 
   if (error) {
