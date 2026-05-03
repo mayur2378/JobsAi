@@ -3,28 +3,28 @@ const STATIC_ASSETS = ['/icons/icon-192.svg', '/icons/icon-512.svg', '/manifest.
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
+    caches.open(CACHE_NAME)
+      .then((cache) => cache.addAll(STATIC_ASSETS))
+      .then(() => self.skipWaiting())
   )
-  self.skipWaiting()
 })
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
-    )
+    caches.keys()
+      .then((keys) =>
+        Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      )
+      .then(() => self.clients.claim())
   )
-  self.clients.claim()
 })
 
 self.addEventListener('fetch', (event) => {
   const { request } = event
+  if (!request.url.startsWith('http')) return
 
   // Cache-first for icons, fonts, and other static assets
-  if (
-    request.destination === 'image' ||
-    request.destination === 'font'
-  ) {
+  if (request.destination === 'image' || request.destination === 'font') {
     event.respondWith(
       caches.match(request).then((cached) => cached || fetch(request))
     )
@@ -40,7 +40,8 @@ self.addEventListener('fetch', (event) => {
 // Push event — Plan 7 adds firebase-messaging-sw.js for FCM;
 // this handler covers any generic push messages sent directly to this SW.
 self.addEventListener('push', (event) => {
-  const data = event.data?.json() ?? {}
+  let data = {}
+  try { data = event.data?.json() ?? {} } catch (_) {}
   const title = data.title ?? 'JobTrack AI'
   const options = {
     body: data.body ?? '',
@@ -52,6 +53,5 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  const url = '/dashboard'
-  event.waitUntil(clients.openWindow(url))
+  event.waitUntil(clients.openWindow('/dashboard'))
 })
