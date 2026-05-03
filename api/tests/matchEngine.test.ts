@@ -272,7 +272,7 @@ describe('runPhase2ForMatch', () => {
 
     MockAnthropic.prototype.messages = { create: mockCreate } as any
 
-    await runPhase2ForMatch(mockMatchId, mockJob as any, mockParsedResume as any)
+    await runPhase2ForMatch(mockMatchId, mockJob as any, mockParsedResume as any, 'user-test-id')
 
     expect(mockCreate).toHaveBeenCalledTimes(1)
     const call = mockCreate.mock.calls[0][0]
@@ -287,7 +287,7 @@ describe('runPhase2ForMatch', () => {
     MockAnthropic.prototype.messages = { create: mockCreate } as any
 
     await expect(
-      runPhase2ForMatch(mockMatchId, mockJob as any, mockParsedResume as any)
+      runPhase2ForMatch(mockMatchId, mockJob as any, mockParsedResume as any, 'user-test-id')
     ).resolves.not.toThrow()
 
     const fromMock = supabaseAdmin.from as jest.Mock
