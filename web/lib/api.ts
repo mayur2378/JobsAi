@@ -2,6 +2,16 @@ import { createClient } from './supabase/client'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001'
 
+// Warn at startup if a non-HTTPS URL is used outside of localhost — data is transmitted in plaintext
+if (
+  typeof window !== 'undefined' &&
+  API_URL.startsWith('http://') &&
+  !API_URL.includes('localhost') &&
+  !API_URL.includes('127.0.0.1')
+) {
+  console.warn('[api] WARNING: NEXT_PUBLIC_API_URL is using HTTP on a non-localhost host. All data including auth tokens will be transmitted in plaintext. Set NEXT_PUBLIC_API_URL to an HTTPS URL in production.')
+}
+
 async function getToken(): Promise<string | null> {
   const supabase = createClient()
   const {
