@@ -18,7 +18,7 @@ async function fetchStats(userId: string) {
       .from('job_matches')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', userId)
-      .gte('match_score', 80),
+      .gte('match_score', 60),
     supabase
       .from('job_matches')
       .select('*', { count: 'exact', head: true })
@@ -53,7 +53,7 @@ export async function StatWidgets({ userId }: { userId: string }) {
   const stats = await fetchStats(userId)
 
   const items: Stat[] = [
-    { label: 'Strong Matches', value: stats.strong, sub: 'score ≥ 80', accent: '#34d399', accentDim: 'rgba(52,211,153,0.12)', href: '/jobs?min_score=80&from=dashboard' },
+    { label: 'Strong Matches', value: stats.strong, sub: 'score ≥ 60', accent: '#34d399', accentDim: 'rgba(52,211,153,0.12)', href: '/jobs?min_score=60&from=dashboard' },
     { label: 'Total Matched', value: stats.total, sub: 'score ≥ 40', accent: '#a78bfa', accentDim: 'rgba(139,92,246,0.12)', href: '/jobs?min_score=40&from=dashboard' },
     { label: 'Applied', value: stats.applied, sub: undefined, accent: '#fbbf24', accentDim: 'rgba(251,191,36,0.12)', href: '/jobs?status=applied&from=dashboard' },
     { label: 'Saved', value: stats.saved, sub: 'review later', accent: '#ec4899', accentDim: 'rgba(236,72,153,0.1)', href: '/jobs?status=saved&from=dashboard' },

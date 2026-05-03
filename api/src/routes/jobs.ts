@@ -2,6 +2,7 @@ import { Router } from 'express'
 import { z } from 'zod'
 import { verifyToken, AuthRequest } from '../middleware/auth'
 import { validate } from '../middleware/validate'
+import { aiLimiter } from '../middleware/rateLimiter'
 import { supabaseAdmin } from '../config/supabase'
 import { success, failure } from '../types'
 import { scrapeJobsForUser } from '../workers/scraper'
@@ -106,7 +107,7 @@ router.get('/', verifyToken, async (req, res) => {
 
 // POST /jobs/refresh — manual trigger (rate-limited 1/hour/user)
 // NOTE: Must be registered before GET /:id to avoid param capture
-router.post('/refresh', verifyToken, async (req, res) => {
+router.post('/refresh', aiLimiter, verifyToken, async (req, res) => {
   const { userId } = req as AuthRequest
 
   const { data: profile, error } = await supabaseAdmin

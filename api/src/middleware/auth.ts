@@ -14,6 +14,7 @@ export async function verifyToken(
 ): Promise<void> {
   const authHeader = req.headers.authorization
   if (!authHeader?.startsWith('Bearer ')) {
+    console.warn(`[auth] 401 missing-header ip=${req.ip ?? 'unknown'} path=${req.path}`)
     res.status(401).json(failure('Missing authorization header'))
     return
   }
@@ -27,6 +28,7 @@ export async function verifyToken(
     } = await supabaseAdmin.auth.getUser(token)
 
     if (error || !user) {
+      console.warn(`[auth] 401 invalid-token ip=${req.ip ?? 'unknown'} path=${req.path}`)
       res.status(401).json(failure('Invalid or expired token'))
       return
     }
