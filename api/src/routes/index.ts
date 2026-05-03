@@ -5,6 +5,7 @@ import skillsRouter from './skills'
 import resumeRouter from './resume'
 import jobsRouter from './jobs'
 import applicationsRouter from './applications'
+import notificationsRouter from './notifications'
 
 const router = Router()
 
@@ -14,5 +15,6 @@ router.use('/skills', skillsRouter)
 router.use('/resume', resumeRouter)
 router.use('/jobs', jobsRouter)
 router.use('/applications', applicationsRouter)
+router.use('/notifications', notificationsRouter)
 
 export default router
