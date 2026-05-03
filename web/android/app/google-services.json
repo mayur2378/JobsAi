@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "564080425648",
+    "project_id": "jobtrack-ai-801fb",
+    "storage_bucket": "jobtrack-ai-801fb.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:564080425648:android:6fceae53c190d9cba25975",
+        "android_client_info": {
+          "package_name": "com.jobtrack.ai"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBa3ohFrqFqVEZwV8HLziiEtY5Wq3ZC9NY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
