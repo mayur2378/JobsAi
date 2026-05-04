@@ -45,6 +45,7 @@ export default async function AdminPage({ searchParams }: PageProps) {
           <h1 className="font-mono font-bold text-xl" style={{ color: '#e2e8f0' }}>Analytics</h1>
           <p className="font-mono text-xs mt-0.5" style={{ color: '#64748b' }}>System-wide metrics</p>
         </div>
+        {/* Suspense required: RangeToggle calls useSearchParams() */}
         <Suspense>
           <RangeToggle current={days} />
         </Suspense>

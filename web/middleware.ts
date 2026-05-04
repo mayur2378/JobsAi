@@ -34,10 +34,10 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Admin route guard — non-admin users get 404 (not 403)
-  if (pathname.startsWith('/admin') && user) {
+  // Admin route guard — anyone who isn't the admin (including unauthenticated) gets 404
+  if (pathname.startsWith('/admin')) {
     const adminId = process.env.ADMIN_USER_ID
-    if (!adminId || user.id !== adminId) {
+    if (!user || !adminId || user.id !== adminId) {
       return new NextResponse('Not Found', { status: 404 })
     }
   }

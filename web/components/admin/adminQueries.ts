@@ -76,6 +76,7 @@ export async function fetchEngagementStats(days: number): Promise<EngagementStat
     .from('page_views')
     .select('user_id, path')
     .gte('created_at', since)
+    .limit(10_000)
 
   if (error) throw new Error(`fetchEngagementStats: ${error.message}`)
 
@@ -108,7 +109,7 @@ export async function fetchJobStats(days: number): Promise<JobStats> {
     supabase.from('jobs').select('id', { count: 'exact', head: true }),
     supabase.from('jobs').select('id', { count: 'exact', head: true }).gte('created_at', since),
     supabase.from('job_matches').select('id', { count: 'exact', head: true }),
-    supabase.from('job_matches').select('match_score'),
+    supabase.from('job_matches').select('match_score').limit(10_000),
   ])
 
   if (totalJobsRes.error) throw new Error(`fetchJobStats(total): ${totalJobsRes.error.message}`)
@@ -164,6 +165,7 @@ export async function fetchDailyViews(days: number): Promise<DailyCount[]> {
     .from('page_views')
     .select('created_at')
     .gte('created_at', since)
+    .limit(10_000)
 
   if (error) throw new Error(`fetchDailyViews: ${error.message}`)
 
@@ -190,6 +192,7 @@ export async function fetchDailySignups(days: number): Promise<DailyCount[]> {
     .from('profiles')
     .select('created_at')
     .gte('created_at', since)
+    .limit(10_000)
 
   if (error) throw new Error(`fetchDailySignups: ${error.message}`)
 

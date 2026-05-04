@@ -22,7 +22,7 @@ export function TopPagesTable({ pages }: { pages: TopPage[] }) {
               }}
             />
           </div>
-          <span className="font-mono text-xs shrink-0" style={{ color: '#94a3b8', width: 100, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <span title={path} className="font-mono text-xs shrink-0" style={{ color: '#94a3b8', width: 100, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {path}
           </span>
           <span className="font-mono text-xs shrink-0" style={{ color: '#a78bfa', width: 32, textAlign: 'right' }}>
