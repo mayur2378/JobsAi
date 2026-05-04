@@ -1,7 +1,9 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 
-function rangeStart(days: number): string {
-  return new Date(Date.now() - days * 86_400_000).toISOString()
+const MS_PER_DAY = 86_400_000
+
+function rangeStart(days: number, now = Date.now()): string {
+  return new Date(now - days * MS_PER_DAY).toISOString()
 }
 
 export interface UserStats {
@@ -44,11 +46,16 @@ export async function fetchUserStats(days: number): Promise<UserStats> {
   const since = rangeStart(days)
 
   const [totalRes, newRes, onboardedRes, activeRes] = await Promise.all([
-    supabase.from('profiles').select('*', { count: 'exact', head: true }),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', since),
-    supabase.from('profiles').select('*', { count: 'exact', head: true }).eq('onboarding_completed', true),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', since),
+    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('onboarding_completed', true),
     supabase.from('page_views').select('user_id').gte('created_at', since),
   ])
+
+  if (totalRes.error) throw new Error(`fetchUserStats(total): ${totalRes.error.message}`)
+  if (newRes.error) throw new Error(`fetchUserStats(new): ${newRes.error.message}`)
+  if (onboardedRes.error) throw new Error(`fetchUserStats(onboarded): ${onboardedRes.error.message}`)
+  if (activeRes.error) throw new Error(`fetchUserStats(active): ${activeRes.error.message}`)
 
   const total = totalRes.count ?? 0
   const activeIds = new Set((activeRes.data ?? []).map((r: { user_id: string }) => r.user_id))
@@ -65,10 +72,12 @@ export async function fetchEngagementStats(days: number): Promise<EngagementStat
   const supabase = createAdminClient()
   const since = rangeStart(days)
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('page_views')
     .select('user_id, path')
     .gte('created_at', since)
+
+  if (error) throw new Error(`fetchEngagementStats: ${error.message}`)
 
   const rows = (data ?? []) as { user_id: string; path: string }[]
   const uniqueUsers = new Set(rows.map((r) => r.user_id)).size
@@ -96,11 +105,16 @@ export async function fetchJobStats(days: number): Promise<JobStats> {
   const since = rangeStart(days)
 
   const [totalJobsRes, newJobsRes, totalMatchesRes, avgScoreRes] = await Promise.all([
-    supabase.from('jobs').select('*', { count: 'exact', head: true }),
-    supabase.from('jobs').select('*', { count: 'exact', head: true }).gte('created_at', since),
-    supabase.from('job_matches').select('*', { count: 'exact', head: true }),
+    supabase.from('jobs').select('id', { count: 'exact', head: true }),
+    supabase.from('jobs').select('id', { count: 'exact', head: true }).gte('created_at', since),
+    supabase.from('job_matches').select('id', { count: 'exact', head: true }),
     supabase.from('job_matches').select('match_score'),
   ])
+
+  if (totalJobsRes.error) throw new Error(`fetchJobStats(total): ${totalJobsRes.error.message}`)
+  if (newJobsRes.error) throw new Error(`fetchJobStats(new): ${newJobsRes.error.message}`)
+  if (totalMatchesRes.error) throw new Error(`fetchJobStats(matches): ${totalMatchesRes.error.message}`)
+  if (avgScoreRes.error) throw new Error(`fetchJobStats(scores): ${avgScoreRes.error.message}`)
 
   const scores = (avgScoreRes.data ?? []).map((r: { match_score: number }) => r.match_score)
   const avgMatchScore =
@@ -120,10 +134,12 @@ export async function fetchFunnelStats(days: number): Promise<FunnelStats> {
   const supabase = createAdminClient()
   const since = rangeStart(days)
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('job_applications')
     .select('status')
     .gte('created_at', since)
+
+  if (error) throw new Error(`fetchFunnelStats: ${error.message}`)
 
   const rows = (data ?? []) as { status: string }[]
   const count = (s: string) => rows.filter((r) => r.status === s).length
@@ -140,13 +156,16 @@ export async function fetchFunnelStats(days: number): Promise<FunnelStats> {
 }
 
 export async function fetchDailyViews(days: number): Promise<DailyCount[]> {
+  const now = Date.now()
   const supabase = createAdminClient()
-  const since = rangeStart(days)
+  const since = rangeStart(days, now)
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('page_views')
     .select('created_at')
     .gte('created_at', since)
+
+  if (error) throw new Error(`fetchDailyViews: ${error.message}`)
 
   const dayMap = new Map<string, number>()
   for (const row of (data ?? []) as { created_at: string }[]) {
@@ -156,20 +175,23 @@ export async function fetchDailyViews(days: number): Promise<DailyCount[]> {
 
   const result: DailyCount[] = []
   for (let i = days - 1; i >= 0; i--) {
-    const date = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)
+    const date = new Date(now - i * MS_PER_DAY).toISOString().slice(0, 10)
     result.push({ date, count: dayMap.get(date) ?? 0 })
   }
   return result
 }
 
 export async function fetchDailySignups(days: number): Promise<DailyCount[]> {
+  const now = Date.now()
   const supabase = createAdminClient()
-  const since = rangeStart(days)
+  const since = rangeStart(days, now)
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('profiles')
     .select('created_at')
     .gte('created_at', since)
+
+  if (error) throw new Error(`fetchDailySignups: ${error.message}`)
 
   const dayMap = new Map<string, number>()
   for (const row of (data ?? []) as { created_at: string }[]) {
@@ -179,7 +201,7 @@ export async function fetchDailySignups(days: number): Promise<DailyCount[]> {
 
   const result: DailyCount[] = []
   for (let i = days - 1; i >= 0; i--) {
-    const date = new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10)
+    const date = new Date(now - i * MS_PER_DAY).toISOString().slice(0, 10)
     result.push({ date, count: dayMap.get(date) ?? 0 })
   }
   return result
