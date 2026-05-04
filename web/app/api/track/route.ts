@@ -7,11 +7,18 @@ export async function POST(req: NextRequest) {
   if (!path || typeof path !== 'string') {
     return new NextResponse(null, { status: 400 })
   }
+  if (path.length > 2048) {
+    return new NextResponse(null, { status: 400 })
+  }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return new NextResponse(null, { status: 401 })
 
-  await supabase.from('page_views').insert({ user_id: user.id, path })
+  const { error } = await supabase.from('page_views').insert({ user_id: user.id, path })
+  if (error) {
+    console.error('[track] insert failed:', error.message)
+    return new NextResponse(null, { status: 500 })
+  }
   return new NextResponse(null, { status: 204 })
 }
