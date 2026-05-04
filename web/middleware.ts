@@ -34,6 +34,14 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Admin route guard — anyone who isn't the admin (including unauthenticated) gets 404
+  if (pathname.startsWith('/admin')) {
+    const adminId = process.env.ADMIN_USER_ID
+    if (!user || !adminId || user.id !== adminId) {
+      return new NextResponse('Not Found', { status: 404 })
+    }
+  }
+
   const isPublic = PUBLIC_PATHS.some(
     (p) => pathname === p || pathname.startsWith('/onboarding')
   )
