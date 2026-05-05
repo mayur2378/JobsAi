@@ -15,13 +15,14 @@ import {
 } from '@/components/admin/adminQueries'
 
 interface PageProps {
-  searchParams: Record<string, string | string[] | undefined>
+  searchParams: Promise<Record<string, string | string[] | undefined>>
 }
 
 const VALID_RANGES = [7, 30, 90]
 
 export default async function AdminPage({ searchParams }: PageProps) {
-  const raw = Number(searchParams.range)
+  const params = await searchParams
+  const raw = Number(params.range)
   const days = VALID_RANGES.includes(raw) ? raw : 30
 
   const [users, engagement, jobs, funnel, dailyViews, dailySignups] = await Promise.all([

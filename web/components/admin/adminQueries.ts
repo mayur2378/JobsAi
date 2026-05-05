@@ -46,16 +46,18 @@ export async function fetchUserStats(days: number): Promise<UserStats> {
   const since = rangeStart(days)
 
   const [totalRes, newRes, onboardedRes, activeRes] = await Promise.all([
-    supabase.from('profiles').select('id', { count: 'exact', head: true }),
-    supabase.from('profiles').select('id', { count: 'exact', head: true }).gte('created_at', since),
-    supabase.from('profiles').select('id', { count: 'exact', head: true }).eq('onboarding_completed', true),
-    supabase.from('page_views').select('user_id').gte('created_at', since),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }),
+    supabase.from('profiles').select('id', { count: 'exact' }).gte('created_at', since),
+    supabase.from('profiles').select('id', { count: 'exact' }).eq('onboarding_completed', true),
+    supabase.from('page_views').select('user_id').gte('created_at', since).limit(10_000),
   ])
 
-  if (totalRes.error) throw new Error(`fetchUserStats(total): ${totalRes.error.message}`)
-  if (newRes.error) throw new Error(`fetchUserStats(new): ${newRes.error.message}`)
-  if (onboardedRes.error) throw new Error(`fetchUserStats(onboarded): ${onboardedRes.error.message}`)
-  if (activeRes.error) throw new Error(`fetchUserStats(active): ${activeRes.error.message}`)
+  const dbErr = (label: string, e: { message?: string; code?: string }) =>
+    new Error(`${label}: ${e.message || e.code || JSON.stringify(e)}`)
+  if (totalRes.error) throw dbErr('fetchUserStats(total)', totalRes.error)
+  if (newRes.error) throw dbErr('fetchUserStats(new)', newRes.error)
+  if (onboardedRes.error) throw dbErr('fetchUserStats(onboarded)', onboardedRes.error)
+  if (activeRes.error) throw dbErr('fetchUserStats(active)', activeRes.error)
 
   const total = totalRes.count ?? 0
   const activeIds = new Set((activeRes.data ?? []).map((r: { user_id: string }) => r.user_id))
@@ -106,9 +108,9 @@ export async function fetchJobStats(days: number): Promise<JobStats> {
   const since = rangeStart(days)
 
   const [totalJobsRes, newJobsRes, totalMatchesRes, avgScoreRes] = await Promise.all([
-    supabase.from('jobs').select('id', { count: 'exact', head: true }),
-    supabase.from('jobs').select('id', { count: 'exact', head: true }).gte('created_at', since),
-    supabase.from('job_matches').select('id', { count: 'exact', head: true }),
+    supabase.from('jobs').select('*', { count: 'exact', head: true }),
+    supabase.from('jobs').select('id', { count: 'exact' }).gte('created_at', since),
+    supabase.from('job_matches').select('*', { count: 'exact', head: true }),
     supabase.from('job_matches').select('match_score').limit(10_000),
   ])
 
