@@ -1,26 +1,19 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname, useRouter } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { LayoutDashboard, Briefcase, ListChecks, User, BarChart3 } from 'lucide-react'
-import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Home',     icon: LayoutDashboard },
-  { href: '/jobs',      label: 'Jobs',     icon: Briefcase },
-  { href: '/tracker',   label: 'Tracker',  icon: ListChecks },
-  { href: '/analytics', label: 'Analytics',icon: BarChart3 },
-  { href: '/profile',   label: 'Profile',  icon: User },
+  { href: '/dashboard', label: 'Home',      icon: LayoutDashboard },
+  { href: '/jobs',      label: 'Jobs',      icon: Briefcase },
+  { href: '/tracker',   label: 'Tracker',   icon: ListChecks },
+  { href: '/analytics', label: 'Analytics', icon: BarChart3 },
+  { href: '/profile',   label: 'Profile',   icon: User },
 ]
 
 export function BottomNav() {
   const pathname = usePathname()
-  const router = useRouter()
-
-  async function handleProfileTap() {
-    // Profile tap navigates normally — logout lives in the profile page
-  }
-  void handleProfileTap
 
   return (
     <nav
