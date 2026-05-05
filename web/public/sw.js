@@ -23,6 +23,10 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
   if (!request.url.startsWith('http')) return
 
+  // Never intercept cross-origin requests (API, Supabase, Firebase, etc.)
+  const url = new URL(request.url)
+  if (url.origin !== self.location.origin) return
+
   // Cache-first for icons, fonts, and other static assets
   if (request.destination === 'image' || request.destination === 'font') {
     event.respondWith(
@@ -31,9 +35,11 @@ self.addEventListener('fetch', (event) => {
     return
   }
 
-  // Network-first for navigation and API calls
+  // Network-first for navigation; fall back to cache only if a match exists
   event.respondWith(
-    fetch(request).catch(() => caches.match(request))
+    fetch(request).catch(() =>
+      caches.match(request).then((r) => r ?? new Response('', { status: 503, statusText: 'Offline' }))
+    )
   )
 })
 
