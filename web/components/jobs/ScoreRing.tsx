@@ -8,22 +8,28 @@ interface ScoreRingProps {
 
 const LABEL_CONFIG: Record<string, { display: string; color: string; border: string; bg: string }> = {
   excellent: {
-    display: 'Strong',
+    display: 'Excellent',
     color: '#34d399',
     border: 'rgba(52,211,153,0.4)',
     bg: 'rgba(52,211,153,0.08)',
   },
   strong: {
-    display: 'Good',
+    display: 'Strong',
     color: '#a78bfa',
     border: 'rgba(167,139,250,0.4)',
     bg: 'rgba(167,139,250,0.08)',
   },
   good: {
-    display: 'Possible',
+    display: 'Good',
     color: '#fbbf24',
     border: 'rgba(251,191,36,0.35)',
     bg: 'rgba(251,191,36,0.08)',
+  },
+  possible: {
+    display: 'Possible',
+    color: '#94a3b8',
+    border: 'rgba(148,163,184,0.3)',
+    bg: 'rgba(148,163,184,0.06)',
   },
   low: {
     display: 'Low',

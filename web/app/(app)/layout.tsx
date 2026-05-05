@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { SidebarNav } from '@/components/layout/SidebarNav'
+import { BottomNav } from '@/components/layout/BottomNav'
 import { PushSetup } from '@/components/push/PushSetup'
 import { PageViewLogger } from '@/components/layout/PageViewLogger'
 
@@ -19,8 +20,9 @@ export default async function AppLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--bg-base)' }}>
+      {/* Sidebar — desktop only */}
       <aside
-        className="w-52 flex-shrink-0 flex flex-col py-4"
+        className="hidden md:flex w-52 flex-shrink-0 flex-col py-4"
         style={{ background: 'var(--bg-surface)', borderRight: '1px solid var(--border-default)' }}
       >
         <div
@@ -37,7 +39,13 @@ export default async function AppLayout({ children }: { children: React.ReactNod
         </div>
         <SidebarNav />
       </aside>
-      <main className="flex-1 overflow-y-auto p-6">{children}</main>
+
+      {/* Main content — extra bottom padding on mobile for bottom nav */}
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-20 md:pb-6">{children}</main>
+
+      {/* Bottom nav — mobile only */}
+      <BottomNav />
+
       <PageViewLogger />
       <PushSetup />
     </div>

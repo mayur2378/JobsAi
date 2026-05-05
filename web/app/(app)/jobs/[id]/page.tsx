@@ -54,7 +54,7 @@ export default async function JobDetailPage({ params }: { params: { id: string }
   const salary = formatSalary(job.salary_min, job.salary_max)
 
   return (
-    <div className="max-w-5xl">
+    <div className="max-w-5xl w-full">
       {/* Breadcrumb */}
       <div
         className="flex items-center gap-2 font-mono text-xs mb-6 -mt-2 pb-4"
@@ -125,8 +125,8 @@ export default async function JobDetailPage({ params }: { params: { id: string }
         </div>
       </div>
 
-      {/* Two-column body */}
-      <div className="grid grid-cols-[1fr_280px] gap-5">
+      {/* Two-column body — stacks on mobile */}
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-5">
 
         {/* Left: job content */}
         <div className="space-y-4">

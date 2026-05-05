@@ -49,7 +49,7 @@ export default async function JobsPage({ searchParams }: PageProps) {
   const totalPages = Math.ceil(response.total / response.limit)
 
   return (
-    <div className="flex flex-col h-full -m-6">
+    <div className="flex flex-col h-full -m-4 md:-m-6">
       {/* Page heading */}
       <div className="px-6 pt-6 pb-4 flex-shrink-0">
         {fromDashboard && (

@@ -6,6 +6,8 @@ import { ScoreRing } from './ScoreRing'
 
 interface RealtimeJobMatch {
   ai_refined: boolean
+  match_score: number
+  match_label: string
   refined_score: number | null
   skills_matched: string[] | null
   skills_missing: string[] | null
@@ -86,12 +88,15 @@ export function MatchPanel({ jobId, initial }: MatchPanelProps) {
           if (updated.ai_refined) {
             setData((prev) => ({
               ...prev,
+              score: updated.match_score ?? prev.score,
+              label: updated.match_label ?? prev.label,
               refinedScore: updated.refined_score ?? null,
               aiRefined: true,
               skillsMatched: updated.skills_matched ?? prev.skillsMatched,
               skillsMissing: updated.skills_missing ?? prev.skillsMissing,
               explanation: updated.match_explanation ?? prev.explanation,
               gaps: updated.gaps_to_improve ?? prev.gaps,
+              breakdown: null, // rule-based breakdown is stale after AI refinement
             }))
           }
         }
