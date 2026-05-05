@@ -20,6 +20,10 @@
 10. [Security](#10-security)
 11. [Infrastructure & Deployment](#11-infrastructure--deployment)
 12. [Known Limitations & Future Work](#12-known-limitations--future-work)
+13. [End-to-End Architecture Diagram](#13-end-to-end-architecture-diagram)
+14. [Technology Stack — Layer by Layer](#14-technology-stack--layer-by-layer)
+15. [Component Inventory](#15-component-inventory)
+16. [APIs & External Services — Full Reference](#16-apis--external-services--full-reference)
 
 ---
 
@@ -702,3 +706,608 @@ Migrations are numbered sequentially and applied manually via Supabase SQL edito
 - **Multi-admin** support with proper role system
 - **Redis queue** (BullMQ) for durable Phase 2 processing at scale
 - **Webhook** from job sources for near-real-time job ingestion
+
+---
+
+## 13. End-to-End Architecture Diagram
+
+```
+╔══════════════════════════════════════════════════════════════════════════════════╗
+║                              USER DEVICES                                        ║
+║                                                                                  ║
+║   ┌─────────────────────┐          ┌─────────────────────┐                      ║
+║   │   Desktop Browser   │          │  Mobile Browser/PWA │                      ║
+║   │   (Chrome, Safari)  │          │  (iOS / Android)    │                      ║
+║   └──────────┬──────────┘          └──────────┬──────────┘                      ║
+║              │ HTTPS / WSS                    │ HTTPS / WSS                     ║
+╚══════════════╪════════════════════════════════╪═════════════════════════════════╝
+               │                                │
+╔══════════════╪════════════════════════════════╪═════════════════════════════════╗
+║              │         VERCEL (CDN + Edge)    │                                  ║
+║              ▼                                ▼                                  ║
+║   ┌─────────────────────────────────────────────────────────────────────────┐   ║
+║   │                     Next.js 16 App Router (SSR + SSG)                   │   ║
+║   │                                                                          │   ║
+║   │  Route Groups:                                                           │   ║
+║   │  ┌────────────┐  ┌───────────────────┐  ┌──────────────┐  ┌──────────┐ │   ║
+║   │  │ (auth)     │  │  onboarding/      │  │  (app)/      │  │ (admin)/ │ │   ║
+║   │  │ /login     │  │  /profile         │  │  /dashboard  │  │ /admin   │ │   ║
+║   │  │ /register  │  │  /resume          │  │  /jobs       │  │          │ │   ║
+║   │  │ /forgot    │  │  /skills          │  │  /tracker    │  │          │ │   ║
+║   │  │ /reset     │  │  /welcome         │  │  /analytics  │  │          │ │   ║
+║   │  └────────────┘  └───────────────────┘  │  /profile    │  └──────────┘ │   ║
+║   │                                          │  /notifications│             │   ║
+║   │  Middleware (auth gate, admin 404)       └──────────────┘               │   ║
+║   │  Service Worker (sw.js — PWA caching + push handling)                   │   ║
+║   └────────────────────────────┬────────────────────────────────────────────┘   ║
+║                                │                                                  ║
+╚════════════════════════════════╪═════════════════════════════════════════════════╝
+                                 │
+          ┌──────────────────────┼──────────────────────┐
+          │                      │                       │
+          │ REST API             │ WebSocket             │ Direct SDK
+          │ (fetch/HTTPS)        │ (Supabase Realtime)   │ (Supabase JS)
+          ▼                      ▼                       ▼
+╔═════════════════╗   ╔═════════════════════╗   ╔══════════════════════╗
+║ RAILWAY         ║   ║ SUPABASE            ║   ║ FIREBASE             ║
+║                 ║   ║                     ║   ║                      ║
+║ Express API     ║   ║ PostgreSQL DB        ║   ║ Cloud Messaging      ║
+║ /api/v1/*       ║   ║ Row-Level Security   ║   ║ (FCM)                ║
+║                 ║   ║                     ║   ║                      ║
+║ Background      ║   ║ Auth (JWT)          ║   ║ Web push tokens      ║
+║ Workers:        ║   ║ Storage (S3)        ║   ║ Android push tokens  ║
+║ • Scheduler     ║   ║ Realtime (WS)       ║   ║                      ║
+║ • Match Engine  ║   ║                     ║   ╚══════════════════════╝
+║ • Resume Parser ║   ╚══════════╤══════════╝
+║ • Notif Worker  ║              │ Supabase JS (service_role)
+║                 ║◄─────────────┘
+╚════════╤════════╝
+         │
+         │ HTTPS (API calls)
+         │
+    ┌────┴─────────────────────────────────────────────┐
+    │              EXTERNAL SERVICES                    │
+    │                                                   │
+    │  ┌──────────────┐  ┌───────────────┐             │
+    │  │  Anthropic   │  │   RapidAPI    │             │
+    │  │  Claude API  │  │   (JSearch)   │             │
+    │  │              │  │               │             │
+    │  │ • Resume     │  │ • Job scrape  │             │
+    │  │   parsing    │  │   by title +  │             │
+    │  │ • Phase 2    │  │   location    │             │
+    │  │   match      │  │               │             │
+    │  │   scoring    │  └───────────────┘             │
+    │  └──────────────┘                                │
+    └──────────────────────────────────────────────────┘
+```
+
+### 13.1 Data Flow — Job Matching Pipeline
+
+```
+User completes onboarding
+         │
+         ▼
+POST /profile/onboarding ──► API Server
+                                   │
+                                   ▼
+                         scrapeForAllActiveUsers()
+                                   │
+                                   ▼
+                         JSearch API ──► raw job listings
+                                   │
+                                   ▼
+                         Deduplicate by external_id
+                         Insert to jobs table
+                                   │
+                          ┌────────┴────────┐
+                          │ Phase 1 Scoring  │ (synchronous, ~ms)
+                          │ Rule-based       │
+                          └────────┬────────┘
+                                   │
+                         Write job_matches row
+                         (match_score, match_label,
+                          match_breakdown)
+                                   │
+                          score >= 40?
+                          ┌────────┘
+                          │ YES
+                          ▼
+                    p-queue enqueue
+                          │
+                          ▼
+                   ┌──────────────┐
+                   │  Phase 2     │ (async, ~2s)
+                   │  Claude API  │
+                   │  w/ caching  │
+                   └──────┬───────┘
+                          │
+                  UPDATE job_matches
+                  (refined_score, ai_refined,
+                   skills_matched/missing,
+                   match_explanation, gaps)
+                          │
+                          ▼
+                  Supabase Realtime
+                          │
+                          ▼
+                  Browser WebSocket ──► MatchPanel
+                  receives UPDATE         updates live
+```
+
+### 13.2 Data Flow — Resume Upload & Parse
+
+```
+User uploads PDF/DOCX
+         │
+         ▼
+POST /resume/upload
+         │
+         ├──► Store file in Supabase Storage
+         ├──► Insert resumes row (is_active=false)
+         └──► parseResumeAsync() [fire-and-forget]
+                   │
+                   ▼
+            Read file from Storage
+                   │
+         ┌─────────┴──────────┐
+         │ PDF: pdf-parse      │
+         │ DOCX: mammoth       │
+         └─────────┬──────────┘
+                   │ extracted text
+                   ▼
+            Claude API
+            (structured JSON output)
+                   │
+                   ▼
+         Write parsed_data to resumes
+         Set is_active=true
+                   │
+         ┌─────────┴──────────┐
+         │ Sync skills table   │
+         │ (remove old resume  │
+         │  skills, add new)   │
+         └─────────┬──────────┘
+                   │
+                   ▼
+         recomputeForUser()
+         (rerun Phase 1 + enqueue Phase 2)
+```
+
+### 13.3 Data Flow — Push Notification
+
+```
+Reminder created by user
+         │
+         ▼
+notifications worker (every 15 min)
+         │
+         ▼
+SELECT reminders WHERE remind_at <= now AND is_sent=false
+         │
+         ▼
+INSERT notifications row (in-app bell)
+         │
+         ▼
+Firebase Admin SDK
+         │
+         ▼
+FCM ──► Browser Service Worker / Android
+        showNotification(title, body)
+```
+
+---
+
+## 14. Technology Stack — Layer by Layer
+
+### 14.1 Frontend Layer (Vercel)
+
+| Concern | Tool / Library | Version | Why chosen |
+|---------|---------------|---------|------------|
+| Framework | Next.js | 16 | App Router SSR, Vercel-native, built-in middleware |
+| Language | TypeScript | 5.x | Type safety across all layers |
+| Styling | Tailwind CSS | 3.4 | Utility-first; pairs with custom inline styles for brand tokens |
+| UI components | Custom (no component lib) | — | Full control over dark theme |
+| Forms | react-hook-form | 7.x | Uncontrolled inputs, minimal re-renders |
+| Validation | Zod | 4.x | Shared schema definitions, frontend + backend |
+| Charts | Recharts | 3.x | Composable, React-native chart primitives |
+| Drag-and-drop | @hello-pangea/dnd | 18.x | Maintained fork of react-beautiful-dnd |
+| Icons | Lucide React | 1.x | Consistent stroke-based icon set |
+| Auth client | @supabase/ssr | 0.10 | Cookie-based sessions for Next.js SSR |
+| DB client | @supabase/supabase-js | 2.x | Realtime subscriptions, storage, auth |
+| Push (web) | Firebase JS SDK | 12.x | FCM web push integration |
+| Push (mobile) | @capacitor/push-notifications | 8.x | Native push on Android |
+| Mobile shell | @capacitor/core | 8.x | Web → native wrapper |
+| PWA | Custom sw.js | — | Service worker for offline + push |
+| Fonts | Fira Code + Fira Sans | via CSS | Mono aesthetic for brand |
+| Deployment | Vercel | — | Git-push deploy, automatic previews, CDN edge |
+
+### 14.2 API Layer (Railway)
+
+| Concern | Tool / Library | Version | Why chosen |
+|---------|---------------|---------|------------|
+| Runtime | Node.js | 20 LTS | Stable, wide ecosystem |
+| Language | TypeScript | 5.x | Type safety, shared types with frontend |
+| TS execution | tsx | 4.x | Zero-config TS watch in dev; no separate build step in dev |
+| TS build | tsc | — | Compiles to `dist/` for production start |
+| Web framework | Express | 4.x | Minimal, well-understood, easy middleware |
+| CORS | cors | 2.x | Origin allowlist middleware |
+| Security headers | helmet | 7.x | Sets HTTP security headers on API responses |
+| Rate limiting | express-rate-limit | 7.x | 100 req/min general, 10 req/min AI |
+| Validation | Zod | 3.x | Request body validation middleware |
+| Auth verification | @supabase/supabase-js | 2.x | JWT verification via `auth.getUser()` |
+| DB access | @supabase/supabase-js | 2.x | Service role client (bypasses RLS) |
+| File parsing (PDF) | pdf-parse | 1.x | Extract text from PDF resumes |
+| File parsing (DOCX) | mammoth | 1.x | Extract text from Word resumes |
+| AI inference | @anthropic-ai/sdk | 0.91 | Claude API for resume parse + match scoring |
+| Push notifications | firebase-admin | 13.x | FCM server-side message dispatch |
+| Job scheduling | node-cron | 4.x | Cron expressions for worker scheduling |
+| Async queue | p-queue | 6.x | In-memory concurrency control for Phase 2 |
+| Env validation | Zod | 3.x | Validates all env vars on startup; fails fast |
+| Deployment | Railway | — | Git-push deploy, auto PORT injection, persistent process |
+
+### 14.3 Database Layer (Supabase)
+
+| Concern | Tool | Notes |
+|---------|------|-------|
+| Database engine | PostgreSQL 15 | Supabase-managed |
+| Auth | Supabase Auth | Email/password; issues JWTs |
+| Row-level security | PostgreSQL RLS | Enforces per-user data isolation |
+| Realtime | Supabase Realtime | WebSocket-based Postgres CDC |
+| File storage | Supabase Storage | S3-compatible; resumes bucket |
+| Schema migrations | Raw SQL files | Applied manually via Supabase SQL editor |
+| Connection pooling | Supabase built-in | PgBouncer included |
+| Indexes | B-tree | user_id, job_id, created_at on key tables |
+| Triggers | PostgreSQL functions | Auto-create profile on auth.users insert |
+
+### 14.4 External Services
+
+| Service | Provider | Usage |
+|---------|----------|-------|
+| AI inference | Anthropic Claude | Resume parsing (Haiku 4.5) + match scoring (Haiku 4.5) |
+| Job listings | JSearch via RapidAPI | Scrape jobs by title + location |
+| Push (server) | Firebase Admin SDK | Dispatch FCM push to browser + Android tokens |
+| Push (client) | Firebase JS SDK | Register browser push subscription; receive FCM |
+| Email (planned) | Resend | Transactional email (not yet active) |
+
+### 14.5 Developer Tooling
+
+| Tool | Purpose |
+|------|---------|
+| ESLint | Linting (Next.js config + @typescript-eslint) |
+| TypeScript strict mode | Type checking across frontend and API |
+| Jest + ts-jest | API unit tests |
+| Supertest | HTTP integration tests for Express routes |
+| Git | Version control |
+| GitHub | Remote repository; Vercel and Railway auto-deploy on push to `master` |
+
+---
+
+## 15. Component Inventory
+
+### 15.1 Layout Components (`web/components/layout/`)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| SidebarNav | SidebarNav.tsx | Desktop left navigation (dashboard, jobs, tracker, analytics, profile, logout) |
+| BottomNav | BottomNav.tsx | Mobile bottom tab bar (5 items, icons + labels, safe-area aware) |
+| PageViewLogger | PageViewLogger.tsx | Client component — fires `INSERT page_views` on every route change |
+
+### 15.2 Auth Components (`web/components/auth/`)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| LoginForm | LoginForm.tsx | Email/password login with Supabase Auth |
+| RegisterForm | RegisterForm.tsx | Email/password registration |
+| ForgotPasswordForm | ForgotPasswordForm.tsx | Sends password reset email |
+| ResetPasswordForm | ResetPasswordForm.tsx | Confirms new password from reset link |
+
+### 15.3 Onboarding Components (`web/components/onboarding/`)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| OnboardingContainer | OnboardingContainer.tsx | Wrapper with step indicator and progress tracking |
+| StepIndicator | StepIndicator.tsx | Visual step progress dots (1–4) |
+
+### 15.4 Profile Components (`web/components/profile/`)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| ProfileForm | ProfileForm.tsx | Full profile edit form — react-hook-form + Zod; handles desired_titles/industries as dynamic field arrays |
+| ProfilePageClient | ProfilePageClient.tsx | Client wrapper combining ProfileForm + ResumeUploader + SkillsManager |
+
+### 15.5 Resume Components (`web/components/resume/`)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| ResumeUploader | ResumeUploader.tsx | Drag-drop / click-to-upload; calls `POST /resume/upload`; polls status |
+| ParsedResumePreview | ParsedResumePreview.tsx | Displays parsed skills, experience, education from Claude output; shows "Parsing…" while in progress |
+
+### 15.6 Skills Components (`web/components/skills/`)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| SkillsManager | SkillsManager.tsx | CRUD list of skills; add, set proficiency (beginner/intermediate/expert), delete; each change triggers match recompute |
+
+### 15.7 Dashboard Components (`web/components/dashboard/`)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| StatWidgets | StatWidgets.tsx | Row of 6 counter cards (total jobs, matches, saved, applied, interviewing, offers/rejected) |
+| TopMatches | TopMatches.tsx | Top 3–5 job cards sorted by match_score |
+| MatchDistribution | MatchDistribution.tsx | Score band breakdown (excellent / strong / good / low counts) |
+| RecentActivity | RecentActivity.tsx | Timeline of recent application status changes |
+| RefreshButton | RefreshButton.tsx | Manual job refresh trigger; disabled for 1h after use; shows countdown |
+| DashboardPoller | DashboardPoller.tsx | Client component subscribing to Realtime for live score updates on dashboard |
+
+### 15.8 Jobs Components (`web/components/jobs/`)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| JobCard | JobCard.tsx | Single job preview — company avatar, title, company, location, salary, posted date, score ring, application status badge |
+| JobList | JobList.tsx | Renders list of `JobCard` components |
+| JobFilters | JobFilters.tsx | Filter bar — min score slider/presets, remote toggle, status dropdown, keyword search |
+| JobDescription | JobDescription.tsx | Expandable description/requirements section |
+| Pagination | Pagination.tsx | Page navigation with total count display |
+| ScoreRing | ScoreRing.tsx | Circular score indicator — sm (44px) or lg (72px); colour by label; pulsing "Refining" state |
+| MatchPanel | MatchPanel.tsx | Right-panel on job detail — score ring, breakdown bars, AI explanation, gaps to close; subscribes to Realtime for live updates |
+| StatusSelector | StatusSelector.tsx | Dropdown to update application status (saved/applied/interviewing/offer/rejected/dismissed) |
+
+### 15.9 Tracker Components (`web/components/tracker/`)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| KanbanBoard | KanbanBoard.tsx | 5-column drag-and-drop board using @hello-pangea/dnd |
+| KanbanColumn | KanbanColumn.tsx | Single column wrapper with drop zone |
+| TrackerCard | TrackerCard.tsx | Application card — title, company, score, dates, offer amount |
+| NotesPanel | NotesPanel.tsx | Slide-out panel with add/view/delete notes |
+| ReminderForm | ReminderForm.tsx | Create reminders with type, date/time, message |
+
+### 15.10 Analytics Components (`web/components/analytics/`)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| PipelineHealthCards | PipelineHealthCards.tsx | Cards showing count at each pipeline stage |
+| ScoreDistributionChart | ScoreDistributionChart.tsx | Recharts bar chart of match score bands |
+| ScoreTrendChart | ScoreTrendChart.tsx | Recharts line chart of 12-week average match score trend |
+
+### 15.11 Admin Components (`web/components/admin/`)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| StatCard | StatCard.tsx | Single metric card with value, label, sub-label, accent colour |
+| StatSection | StatSection.tsx | Grid of StatCards with optional child element (e.g. TopPagesTable) |
+| FunnelRow | FunnelRow.tsx | Horizontal funnel visualisation — saved → applied → interviewing → offer with counts and apply rate |
+| DailyViewsChart | DailyViewsChart.tsx | Recharts area chart of daily page views |
+| DailySignupsChart | DailySignupsChart.tsx | Recharts bar chart of daily new user signups |
+| TopPagesTable | TopPagesTable.tsx | Table of top 5 most-visited paths with view counts; truncates long paths with title tooltip |
+| RangeToggle | RangeToggle.tsx | 7 / 30 / 90 day selector using `useSearchParams` — syncs to URL query param |
+| adminQueries | adminQueries.ts | Server-side data fetching functions (not a component) — 6 functions powering the admin page |
+
+### 15.12 Push / PWA Components (`web/components/push/`, `web/components/pwa/`)
+
+| Component | File | Description |
+|-----------|------|-------------|
+| PushSetup | PushSetup.tsx | Requests notification permission; registers FCM token; calls `POST /notifications/register` |
+| InstallPrompt | InstallPrompt.tsx | Shows PWA "Add to Home Screen" banner |
+
+---
+
+## 16. APIs & External Services — Full Reference
+
+### 16.1 Internal REST API (`/api/v1`)
+
+**Base URL:** `https://[railway-domain]/api/v1`  
+**Auth:** All endpoints (except `/health`) require `Authorization: Bearer <supabase-jwt>`
+
+#### Profile Endpoints
+
+| Method | Path | Request Body | Response | Usage |
+|--------|------|-------------|----------|-------|
+| GET | `/profile` | — | Profile object | Fetch user profile on load |
+| PUT | `/profile` | `{ full_name, phone, location, desired_titles[], preferred_locations[], work_preference, salary_min, salary_max, years_experience, industries[], priority_skills[] }` | Updated profile | Save profile form; triggers match recompute if priority_skills changed |
+| POST | `/profile/onboarding` | — | `{ onboarding_completed: true }` | Called at end of onboarding wizard to unlock the app |
+
+#### Resume Endpoints
+
+| Method | Path | Request | Response | Usage |
+|--------|------|---------|----------|-------|
+| POST | `/resume/upload` | `multipart/form-data` with `file` field (PDF/DOCX, max 10 MB) | Resume record | Upload resume from onboarding or profile page |
+| GET | `/resume` | — | Resume record + `signed_url` | Load current resume in profile page |
+| GET | `/resume/status/:id` | — | `{ parsed_at, parsed_data, is_active }` | Poll every 2s after upload until `parsed_at` is non-null |
+| POST | `/resume/:id/reparse` | — | Resume record | Re-trigger Claude parsing (e.g. if initial parse failed) |
+| DELETE | `/resume/:id` | — | 204 No Content | Remove resume + Supabase Storage file |
+
+#### Skills Endpoints
+
+| Method | Path | Request Body | Response | Usage |
+|--------|------|-------------|----------|-------|
+| GET | `/skills` | — | `Skill[]` | Load skills in SkillsManager and onboarding confirm step |
+| POST | `/skills` | `{ name, proficiency?, source? }` | Created skill | Add new skill; triggers full match recompute |
+| PUT | `/skills/:id` | `{ name?, proficiency? }` | Updated skill | Change proficiency; triggers recompute |
+| DELETE | `/skills/:id` | — | 204 | Remove skill; triggers recompute |
+
+#### Jobs Endpoints
+
+| Method | Path | Query Params | Response | Usage |
+|--------|------|-------------|----------|-------|
+| GET | `/jobs` | `page, limit, min_score, remote, status` | `{ jobs[], total, page, limit }` | Jobs list page; dashboard top matches |
+| GET | `/jobs/:id` | — | Full job + match detail | Job detail page |
+| POST | `/jobs/refresh` | — | `{ queued: true }` | Manual refresh button; rate-limited 1/hour |
+| PATCH | `/jobs/:id/status` | `{ status }` | Updated match | Status selector on job card/detail |
+
+#### Applications Endpoints
+
+| Method | Path | Request Body | Response | Usage |
+|--------|------|-------------|----------|-------|
+| GET | `/applications` | — | `Application[]` with job details | Kanban board load |
+| POST | `/applications` | `{ job_id, status }` | Created application | Save / apply from job detail |
+| PUT | `/applications/:id` | `{ status?, applied_at?, interview_date?, follow_up_date?, offer_amount? }` | Updated application | Drag-drop status change; date updates |
+| DELETE | `/applications/:id` | — | 204 | Remove from tracker |
+| GET | `/applications/:id/notes` | — | `Note[]` | Load notes in NotesPanel |
+| POST | `/applications/:id/notes` | `{ content }` | Created note | Add note |
+| DELETE | `/applications/notes/:noteId` | — | 204 | Delete note |
+| GET | `/reminders` | `?application_id=` | `Reminder[]` | Load reminders for application |
+| POST | `/reminders` | `{ job_application_id, reminder_type, remind_at, message }` | Created reminder | Create interview/followup reminder |
+| PUT | `/reminders/:id` | `{ remind_at?, message?, reminder_type? }` | Updated reminder | Edit reminder |
+| DELETE | `/reminders/:id` | — | 204 | Delete reminder |
+
+#### Notifications Endpoints
+
+| Method | Path | Request Body | Response | Usage |
+|--------|------|-------------|----------|-------|
+| POST | `/notifications/register` | `{ token, platform }` | Registered token | Called by PushSetup on permission grant |
+
+#### Health Endpoint
+
+| Method | Path | Response | Usage |
+|--------|------|----------|-------|
+| GET | `/health` | `{ status: "ok", timestamp }` | Railway health check; browser smoke test |
+
+---
+
+### 16.2 Supabase APIs
+
+#### Auth API (via `@supabase/ssr` + `@supabase/supabase-js`)
+
+| Operation | Method | Where Used |
+|-----------|--------|------------|
+| `signUp({ email, password })` | Client | RegisterForm |
+| `signInWithPassword({ email, password })` | Client | LoginForm |
+| `signOut()` | Client | SidebarNav logout, BottomNav |
+| `resetPasswordForEmail(email)` | Client | ForgotPasswordForm |
+| `updateUser({ password })` | Client | ResetPasswordForm |
+| `getUser()` | Server (SSR) | All server components, middleware |
+| `getSession()` | Client | `apiFetch()` — get JWT for API calls |
+| `auth.admin.listUsers()` | Server (service_role) | Admin queries — fallback if needed |
+
+#### Database API (PostgREST via `@supabase/supabase-js`)
+
+| Table | Operations | Where |
+|-------|-----------|-------|
+| profiles | SELECT, UPDATE, UPSERT | Profile page SSR, API server |
+| resumes | SELECT, INSERT, UPDATE, DELETE | API resume routes |
+| skills | SELECT, INSERT, UPDATE, DELETE | API skills routes |
+| jobs | SELECT, INSERT, UPSERT | API jobs routes, scraper |
+| job_matches | SELECT, INSERT, UPDATE | Match engine, jobs routes |
+| job_applications | SELECT, INSERT, UPDATE, DELETE | API applications routes |
+| notes | SELECT, INSERT, DELETE | API notes routes |
+| reminders | SELECT, INSERT, UPDATE, DELETE | API reminders routes |
+| notifications | SELECT, INSERT, UPDATE | API notifications, notification worker |
+| push_tokens | SELECT, INSERT, UPSERT, DELETE | API notifications/register, push service |
+| page_views | INSERT (client), SELECT (admin) | PageViewLogger, admin queries |
+
+#### Storage API
+
+| Operation | Bucket | Where |
+|-----------|--------|-------|
+| `upload(path, file)` | `resumes` | POST /resume/upload |
+| `download(path)` | `resumes` | Resume parser (reads file bytes) |
+| `createSignedUrl(path, ttl)` | `resumes` | GET /resume — serves download link to frontend |
+| `remove([path])` | `resumes` | DELETE /resume/:id |
+
+#### Realtime API
+
+| Subscription | Table | Event | Filter | Where |
+|-------------|-------|-------|--------|-------|
+| Job match updates | `job_matches` | UPDATE | `job_id=eq.<jobId>` | MatchPanel (job detail) |
+| Dashboard updates | `job_matches` | UPDATE | `user_id=eq.<userId>` | DashboardPoller |
+
+---
+
+### 16.3 Anthropic Claude API
+
+**SDK:** `@anthropic-ai/sdk` v0.91  
+**Models used:** `claude-haiku-4-5` (both use cases)
+
+#### Use Case 1 — Resume Parsing
+
+| Property | Value |
+|----------|-------|
+| Endpoint | `messages.create()` |
+| Model | claude-haiku-4-5 |
+| Input | Extracted plain text from PDF/DOCX resume |
+| Output | Structured JSON: `{ full_name, email, phone, location, skills[], experience[], education[], certifications[], keywords[], years_experience, summary }` |
+| Caching | Not used (one-off per upload) |
+| Called from | `api/src/services/resumeParser.ts` |
+| Trigger | On resume upload or explicit reparse |
+
+#### Use Case 2 — Phase 2 Match Scoring
+
+| Property | Value |
+|----------|-------|
+| Endpoint | `messages.create()` |
+| Model | claude-haiku-4-5 |
+| Input | Cached prefix: user's full parsed resume. Variable suffix: job title, company, description, requirements, extracted_skills |
+| Output | Structured JSON: `{ refined_score, skills_matched[], skills_missing[], match_explanation, gaps_to_improve[] }` |
+| Caching | `cache_control: { type: "ephemeral" }` on resume prefix — ~90% hit rate (5-min TTL) |
+| Called from | `api/src/workers/matchEngine.ts` |
+| Trigger | Queued via p-queue for all jobs scoring ≥ 40 in Phase 1 |
+
+---
+
+### 16.4 RapidAPI — JSearch (Job Listings)
+
+**SDK:** Native `fetch`  
+**Base URL:** `https://jsearch.p.rapidapi.com`
+
+| Property | Value |
+|----------|-------|
+| Endpoint | `GET /search` |
+| Auth | `X-RapidAPI-Key` header |
+| Query params | `query` (title + location), `num_pages`, `date_posted` |
+| Called from | `api/src/workers/scraper.ts` |
+| Trigger | Every 2 hours via scheduler; manual refresh |
+| Response fields used | `job_id`, `job_title`, `employer_name`, `job_city`, `job_state`, `job_is_remote`, `job_description`, `job_required_skills`, `job_salary_min/max`, `job_apply_link`, `job_posted_at_datetime` |
+
+---
+
+### 16.5 Firebase — Cloud Messaging (Push Notifications)
+
+#### Client-side (Firebase JS SDK v12)
+
+| Operation | Where | Purpose |
+|-----------|-------|---------|
+| `getToken(messaging, { vapidKey })` | PushSetup.tsx | Request push permission + get FCM token |
+| `onMessage(messaging, handler)` | firebase-messaging-sw.js | Receive foreground push messages |
+| Service worker import | `/firebase-messaging-sw.js` | Background message handling (separate from sw.js) |
+
+#### Server-side (Firebase Admin SDK v13)
+
+| Operation | Where | Purpose |
+|-----------|-------|---------|
+| `initializeApp({ credential })` | `api/src/services/push.ts` | Initialise with service account JSON |
+| `messaging().send({ token, notification })` | `api/src/services/push.ts` | Send push to a single FCM token |
+| Auto-delete on `messaging/registration-token-not-registered` | push.ts | Clean up stale tokens |
+
+**Token lifecycle:**
+1. User grants notification permission in browser → Firebase JS SDK returns FCM token
+2. Frontend calls `POST /notifications/register` with token + platform
+3. Token stored in `push_tokens` table (UPSERT to avoid duplicates)
+4. Server sends via Admin SDK using stored tokens
+5. Rejected tokens auto-deleted
+
+---
+
+### 16.6 Vercel APIs (Deployment)
+
+| Feature | Usage |
+|---------|-------|
+| Git integration | Auto-deploys on push to `master` branch |
+| Environment variables | `NEXT_PUBLIC_*` baked at build time; server vars injected at runtime |
+| Preview deployments | Each PR gets a preview URL |
+| Edge network | Static assets and SSR cached at edge CDN nodes |
+| Build command | `npm run build` (Next.js build) |
+| Output | Serverless functions (SSR pages) + static assets |
+
+---
+
+### 16.7 Railway APIs (API Hosting)
+
+| Feature | Usage |
+|---------|-------|
+| Git integration | Auto-deploys on push to `master` |
+| `PORT` env var | Auto-injected; app reads `process.env.PORT` |
+| Networking | Public domain `*.up.railway.app` proxies HTTPS → internal PORT |
+| Build command | `npm run build` (tsc compile to `dist/`) |
+| Start command | `npm start` (`node dist/index.js`) |
+| Persistent process | Single long-lived Node.js process hosting API + all workers |
