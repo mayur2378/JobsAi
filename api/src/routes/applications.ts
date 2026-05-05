@@ -69,10 +69,12 @@ router.get('/', verifyToken, async (req, res) => {
 // POST /applications — upsert application record
 router.post('/', verifyToken, validate(createAppSchema), async (req, res) => {
   const { userId } = req as AuthRequest
+  // VULN-002: Explicit fields prevent user_id override from request body
+  const { job_id, status } = req.body as { job_id: string; status: AppStatus }
   const { data, error } = await supabaseAdmin
     .from('job_applications')
     .upsert(
-      { user_id: userId, ...req.body, updated_at: new Date().toISOString() },
+      { user_id: userId, job_id, status, updated_at: new Date().toISOString() },
       { onConflict: 'user_id,job_id' }
     )
     .select()

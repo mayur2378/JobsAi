@@ -8,6 +8,16 @@ import { parseResumeAsync } from '../services/resumeParser'
 
 const router = Router()
 
+// VULN-007: Detect actual file type from magic bytes, not browser-supplied mimetype
+function detectMagicFileType(buffer: Buffer): 'pdf' | 'docx' | null {
+  if (buffer.length < 4) return null
+  // PDF: %PDF (25 50 44 46)
+  if (buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46) return 'pdf'
+  // DOCX / ZIP: PK (50 4B)
+  if (buffer[0] === 0x50 && buffer[1] === 0x4B) return 'docx'
+  return null
+}
+
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 10 * 1024 * 1024 },
@@ -44,9 +54,17 @@ router.post(
     }
 
     const { userId } = req as AuthRequest
-    const fileExt = req.file.originalname.split('.').pop()?.toLowerCase() ?? ''
-    const fileType = fileExt === 'pdf' ? 'pdf' : 'docx'
-    const storagePath = `${userId}/${randomUUID()}-${req.file.originalname}`
+
+    // VULN-007: Validate actual file content against magic bytes (ignore browser-supplied mimetype)
+    const detectedType = detectMagicFileType(req.file.buffer)
+    if (!detectedType) {
+      res.status(400).json(failure('File content does not match a supported type (PDF or DOCX)'))
+      return
+    }
+    const fileType = detectedType
+
+    // VULN-003: Never use originalname in the storage path — use UUID + safe extension only
+    const storagePath = `${userId}/${randomUUID()}.${fileType}`
 
     const { error: uploadError } = await supabaseAdmin.storage
       .from('resumes')

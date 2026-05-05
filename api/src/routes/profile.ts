@@ -38,9 +38,16 @@ router.get('/', verifyToken, async (req, res) => {
 
 router.put('/', verifyToken, validate(updateProfileSchema), async (req, res) => {
   const { userId } = req as AuthRequest
+  // VULN-005: Explicit field list prevents mass assignment of privileged columns (is_admin, onboarding_completed, etc.)
+  const { full_name, phone, location, desired_titles, preferred_locations, work_preference, salary_min, salary_max, years_experience, industries, priority_skills } = req.body
   const { data, error } = await supabaseAdmin
     .from('profiles')
-    .upsert({ id: userId, ...req.body, updated_at: new Date().toISOString() })
+    .upsert({
+      id: userId,
+      full_name, phone, location, desired_titles, preferred_locations,
+      work_preference, salary_min, salary_max, years_experience, industries, priority_skills,
+      updated_at: new Date().toISOString(),
+    })
     .select('id, full_name, phone, location, desired_titles, preferred_locations, work_preference, salary_min, salary_max, years_experience, industries, priority_skills, onboarding_completed, last_refresh_at, updated_at')
     .single()
 

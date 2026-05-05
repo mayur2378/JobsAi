@@ -1,6 +1,21 @@
+import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 const MS_PER_DAY = 86_400_000
+
+// VULN-004: Self-defending admin guard — every analytics function verifies is_admin
+// via a separate authenticated client, independent of any layout-level check.
+async function assertAdmin(): Promise<void> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthenticated')
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('is_admin')
+    .eq('id', user.id)
+    .single()
+  if (!profile?.is_admin) throw new Error('Forbidden: admin access required')
+}
 
 function rangeStart(days: number, now = Date.now()): string {
   return new Date(now - days * MS_PER_DAY).toISOString()
@@ -42,6 +57,7 @@ export interface DailyCount {
 }
 
 export async function fetchUserStats(days: number): Promise<UserStats> {
+  await assertAdmin()
   const supabase = createAdminClient()
   const since = rangeStart(days)
 
@@ -71,6 +87,7 @@ export async function fetchUserStats(days: number): Promise<UserStats> {
 }
 
 export async function fetchEngagementStats(days: number): Promise<EngagementStats> {
+  await assertAdmin()
   const supabase = createAdminClient()
   const since = rangeStart(days)
 
@@ -104,6 +121,7 @@ export async function fetchEngagementStats(days: number): Promise<EngagementStat
 }
 
 export async function fetchJobStats(days: number): Promise<JobStats> {
+  await assertAdmin()
   const supabase = createAdminClient()
   const since = rangeStart(days)
 
@@ -134,6 +152,7 @@ export async function fetchJobStats(days: number): Promise<JobStats> {
 }
 
 export async function fetchFunnelStats(days: number): Promise<FunnelStats> {
+  await assertAdmin()
   const supabase = createAdminClient()
   const since = rangeStart(days)
 
@@ -159,6 +178,7 @@ export async function fetchFunnelStats(days: number): Promise<FunnelStats> {
 }
 
 export async function fetchDailyViews(days: number): Promise<DailyCount[]> {
+  await assertAdmin()
   const now = Date.now()
   const supabase = createAdminClient()
   const since = rangeStart(days, now)
@@ -186,6 +206,7 @@ export async function fetchDailyViews(days: number): Promise<DailyCount[]> {
 }
 
 export async function fetchDailySignups(days: number): Promise<DailyCount[]> {
+  await assertAdmin()
   const now = Date.now()
   const supabase = createAdminClient()
   const since = rangeStart(days, now)

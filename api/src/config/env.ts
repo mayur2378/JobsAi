@@ -22,7 +22,13 @@ function loadEnv(): Env {
     console.error(JSON.stringify(result.error.flatten().fieldErrors, null, 2))
     process.exit(1)
   }
-  return result.data
+  const data = result.data
+  // VULN-008: Prevent wildcard CORS in production — CORS_ORIGIN must be set explicitly
+  if (data.NODE_ENV === 'production' && (!data.CORS_ORIGIN || data.CORS_ORIGIN === '*')) {
+    console.error('❌ CORS_ORIGIN must be explicitly set to your production domain — refusing to start with wildcard CORS')
+    process.exit(1)
+  }
+  return data
 }
 
 export const env = loadEnv()
